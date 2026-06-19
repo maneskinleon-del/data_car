@@ -31,5 +31,18 @@
     "typescript": "~5.8.2",
     "vite": "^6.2.3",
     "@types/express": "^4.17.21"
-  }
+  },
+  "description": "",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/maneskinleon-del/data_car.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/maneskinleon-del/data_car/issues"
+  },
+  "homepage": "https://github.com/maneskinleon-del/data_car#readme"
 }
