@@ -1,0 +1,6 @@
+{
+  "name": "Scuderia Data",
+  "description": "High-octane telemetry and predictive maintenance dashboard for MG Scuderia performance cars with AI-powered diagnostic helper.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
