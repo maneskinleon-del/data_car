@@ -5,6 +5,7 @@ import {
   Car,
   Wrench,
   FileText,
+  User,
 } from "lucide-react";
 
 import Header from "./components/Header";
@@ -34,6 +35,8 @@ export default function App() {
     }
     return {
       chassis: "#8829-XP",
+      marca: "MG 350",
+      propietario: "Mangonz",
       estadoActivo: true,
       aceiteMotor: "",
       filtroAceite: "",
@@ -135,19 +138,40 @@ export default function App() {
             <div className="glass-panel carbon-texture p-6 md:p-8 rounded-xl flex flex-col md:flex-row items-center gap-6 md:gap-8 border-l-4 border-[#FF3D00] relative overflow-hidden">
               <div className="absolute -top-10 -right-10 w-40 h-40 bg-gradient-to-br from-[#FF3D00]/10 to-transparent rounded-full blur-xl pointer-events-none" />
 
-              <div className="flex-grow text-center md:text-left select-none z-10">
+              <div className="flex-grow text-center md:text-left select-none z-10 w-full">
                 <div className="inline-flex items-center space-x-2 text-[#FF3D00] font-mono text-[9px] uppercase tracking-[0.3em] font-extrabold mb-1">
                   <span className="w-5 h-[1px] bg-[#FF3D00]"></span>
                   <span>GARAJE</span>
                 </div>
-                <h1 className="font-display text-4xl md:text-5xl font-black text-white leading-none tracking-tighter mt-1 mb-4 uppercase">
-                  MG 350
-                </h1>
 
-                <div className="flex flex-wrap justify-center md:justify-start gap-3">
-                  <span className="px-3.5 py-1.5 bg-[#FF3D00] text-white font-mono text-[10px] font-extrabold flex items-center gap-1.5 rounded-sm skew-box shadow-[0_4px_15px_rgba(255,61,0,0.3)]">
-                    <Layers className="w-3.5 h-3.5" />
-                    CHASIS: {specs.chassis}
+                <input
+                  type="text"
+                  value={specs.marca}
+                  onChange={(e) => setSpecs((prev) => ({ ...prev, marca: e.target.value }))}
+                  placeholder="Marca y modelo"
+                  className="bg-transparent border-none outline-none focus:bg-white/5 focus:rounded-lg px-1 -mx-1 font-display text-4xl md:text-5xl font-black text-white leading-none tracking-tighter mt-1 mb-4 uppercase w-full md:w-auto"
+                />
+
+                <div className="flex flex-wrap justify-center md:justify-start gap-3 items-center">
+                  <span className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#FF3D00] text-white font-mono text-[10px] font-extrabold rounded-sm skew-box shadow-[0_4px_15px_rgba(255,61,0,0.3)]">
+                    <Layers className="w-3.5 h-3.5 shrink-0" />
+                    CHASIS:
+                    <input
+                      type="text"
+                      value={specs.chassis}
+                      onChange={(e) => setSpecs((prev) => ({ ...prev, chassis: e.target.value }))}
+                      className="bg-transparent border-none outline-none focus:bg-black/20 focus:rounded px-1 -mx-1 font-mono text-[10px] font-extrabold text-white w-24"
+                    />
+                  </span>
+                  <span className="flex items-center gap-1.5 px-3.5 py-1.5 bg-white/5 border border-white/10 text-white font-mono text-[10px] font-extrabold rounded-sm skew-box">
+                    <User className="w-3.5 h-3.5 shrink-0 text-[#FF8A00]" />
+                    <input
+                      type="text"
+                      value={specs.propietario}
+                      onChange={(e) => setSpecs((prev) => ({ ...prev, propietario: e.target.value }))}
+                      placeholder="Propietario"
+                      className="bg-transparent border-none outline-none focus:bg-black/20 focus:rounded px-1 -mx-1 font-mono text-[10px] font-extrabold text-white w-28"
+                    />
                   </span>
                 </div>
                 <p className="font-mono text-[10px] text-white/50 mt-6 uppercase tracking-[0.25em] font-black">

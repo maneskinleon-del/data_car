@@ -1,5 +1,7 @@
 export interface VehicleSpecs {
   chassis: string;
+  marca: string;
+  propietario: string;
   estadoActivo: boolean;
   aceiteMotor: string;
   filtroAceite: string;
