@@ -1,7 +1,6 @@
 #!/bin/bash
-# Script para subir todo automáticamente
-git add .
-git commit -m "Auto-commit: $(date)"
+# Script seguro: solo sube archivos fuente, NO .env ni secrets
+git add src/ package.json tsconfig.json vite.config.ts server.ts index.html
+git commit -m "Deploy: $(date)"
 git push origin main
-echo "¡Tu código ha sido subido con éxito!"
-
+echo "¡Código subido con éxito!"

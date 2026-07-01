@@ -4,6 +4,15 @@ import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
 import { GoogleGenAI, Type } from "@google/genai";
 
+// CORS y rate limiting (opcional pero recomendado)
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
+
 dotenv.config();
 
 const app = express();
@@ -41,6 +50,10 @@ app.get("/api/health", (req, res) => {
 app.post("/api/chat", async (req, res) => {
   try {
     const { message, chatHistory } = req.body;
+    // Validar input
+    if (!message || typeof message !== 'string' || message.trim().length === 0) {
+      return res.status(400).json({ error: "Mensaje inválido" });
+    }
     const ai = getGenAI();
 
     if (!ai) {
@@ -56,7 +69,7 @@ Ofrece consejos sobre aceites recomendados (p. ej., 5W-30 sintético de alto des
 Conversa en español. Responde de forma concisa pero con estilo deportivo de competición extreme track.`;
 
     const chatInstance = ai.chats.create({
-      model: "gemini-3.5-flash",
+      model: "gemini-2.0-flash",
       config: {
         systemInstruction,
         temperature: 0.8,
@@ -75,7 +88,11 @@ Conversa en español. Responde de forma concisa pero con estilo deportivo de com
 // 3. Autocomplete / Scan PDF simulate database endpoint
 app.post("/api/autofill", async (req, res) => {
   try {
-    const { docType } = req.body; // e.g., 'invoice' or 'manual'
+    const { docType } = req.body;
+    // Validar input
+    if (!docType || (docType !== 'invoice' && docType !== 'manual')) {
+      return res.status(400).json({ error: "Tipo de documento inválido" });
+    }
     const ai = getGenAI();
 
     const mockSpecs = {
@@ -104,7 +121,7 @@ app.post("/api/autofill", async (req, res) => {
     const prompt = `Genera las especificaciones premium recomendadas para un vehículo deportivo de competición MG 350s Sedan (chasis #8829-XP) con 79,960 km para uso en carreras y trackdays. Queremos un set estructurado que coincida con lo siguiente, pero optimizado. Devuelve un formato JSON válido con los campos específicos.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-2.0-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",

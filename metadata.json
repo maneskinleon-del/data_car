@@ -1,6 +1,6 @@
 {
   "name": "Scuderia Data",
-  "description": "High-octane telemetry and predictive maintenance dashboard for MG Scuderia performance cars with AI-powered diagnostic helper.",
+  "description": "Dashboard de telemetría y diagnóstico de mantenimiento para MG 350s con asistente AI. Incluye chat con Gemini, autocompletado y exportación CSV de datos de pista.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_AI"]
 }
