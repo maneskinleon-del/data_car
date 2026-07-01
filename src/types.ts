@@ -12,14 +12,6 @@ export interface VehicleSpecs {
   ultimoCambioKm: number;
 }
 
-export interface MaintenanceStatus {
-  vidaAceite: number; // percentage
-  desgastePastillas: number; // percentage
-  presionNeumaticos: number; // percentage
-  presionCritica: boolean;
-  kmRestantes: number;
-}
-
 export interface ServiceRecord {
   id: string;
   name: string;
@@ -30,28 +22,17 @@ export interface ServiceRecord {
   colorType: 'primary' | 'secondary' | 'neutral'; // determines border indicators
 }
 
-export interface ChatMessage {
-  id: string;
-  sender: 'user' | 'system' | 'diagnosis';
-  text: string;
-  timestamp: string;
-  diagnosticData?: {
-    code: string;
-    criticality: 'Informativo' | 'Advertencia' | 'Crítico';
-    description: string;
-    causes: string[];
-    action: string;
-  };
-}
+// Tipos de documento del vehículo que se pueden guardar en PDF
+export type DocumentoTipo = 'soap' | 'revision_tecnica' | 'licencia' | 'permiso_circulacion' | 'otro';
 
-export interface TelemetryStats {
-  rpm: number;
-  maxRpm: number;
-  picoRpm: number;
-  marcha: number;
-  velocidad: number;
-  fuerzaG: number;
-  tempMotor: number;
-  consumoProm: number;
-  voltajeBateria: number;
+export interface DocumentoVehiculo {
+  id: string;
+  tipo: DocumentoTipo;
+  nombre: string;          // etiqueta libre, ej. "SOAP 2026" o "Licencia Clase B"
+  fechaEmision?: string;   // ISO yyyy-mm-dd, opcional
+  fechaVencimiento?: string; // ISO yyyy-mm-dd, opcional (algunos documentos no vencen)
+  notas?: string;
+  archivoNombre: string;   // nombre original del PDF
+  archivoTamano: number;   // bytes, solo para mostrar en la UI
+  fechaSubida: string;     // ISO datetime de cuándo se subió
 }

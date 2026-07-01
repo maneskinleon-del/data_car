@@ -1,6 +1,6 @@
 {
-  "name": "Scuderia Data",
-  "description": "Dashboard de telemetría y diagnóstico de mantenimiento para MG 350s con asistente AI. Incluye chat con Gemini, autocompletado y exportación CSV de datos de pista.",
+  "name": "AutoData MG 350",
+  "description": "Ficha técnica, historial de mantenciones y documentos (SOAP, revisión técnica, licencia) del MG 350. 100% local, sin backend ni IA.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_AI"]
+  "majorCapabilities": []
 }

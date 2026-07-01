@@ -23,11 +23,11 @@ export default function MaintenanceModal({ isOpen, onClose, onAddRecord, current
     e.preventDefault();
     
     // Auto-fill today if empty
-    const finalDate = date ? new Date(date).toLocaleDateString('es-ES', {
+    const finalDate = new Date(date || Date.now()).toLocaleDateString('es-ES', {
       day: '2-digit',
       month: 'short',
       year: 'numeric'
-    }).toUpperCase() : "18 JUN 2026";
+    }).toUpperCase();
 
     const newRecord: ServiceRecord = {
       id: Math.random().toString(36).substring(2, 9),
@@ -115,8 +115,8 @@ export default function MaintenanceModal({ isOpen, onClose, onAddRecord, current
               <option value="Cambio Aceite & Filtros">Cambio de Aceite & Filtros Premium</option>
               <option value="Mantenimiento Mayor">Mantenimiento Mayor (Puesta a Punto)</option>
               <option value="Alineación y Balanceo">Alineación, Balanceo & Suspensión</option>
-              <option value="Revisión Eléctrica ECU">Revisión Eléctrica & Re-mapeo ECU</option>
-              <option value="Afinamiento Stage 2 Track">Aumento Rendimiento Turbocargador (Stage 2)</option>
+              <option value="Revisión Eléctrica ECU">Revisión Eléctrica</option>
+              <option value="Otro">Otro servicio</option>
             </select>
           </div>
 
@@ -165,7 +165,7 @@ export default function MaintenanceModal({ isOpen, onClose, onAddRecord, current
 
           {/* Color Code / Category Indicator */}
           <div>
-            <label className="block text-white/50 uppercase font-bold tracking-widest text-[9px] mb-2">INDICADOR DE PIT LANE</label>
+            <label className="block text-white/50 uppercase font-bold tracking-widest text-[9px] mb-2">CATEGORÍA</label>
             <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
@@ -176,7 +176,7 @@ export default function MaintenanceModal({ isOpen, onClose, onAddRecord, current
                     : "bg-black border-white/10 text-white/60 hover:border-white/25"
                 }`}
               >
-                Rosso Corsa
+                Mayor
               </button>
               <button
                 type="button"
@@ -187,7 +187,7 @@ export default function MaintenanceModal({ isOpen, onClose, onAddRecord, current
                     : "bg-black border-white/10 text-white/60 hover:border-white/25"
                 }`}
               >
-                Giallo Modena
+                Rutinario
               </button>
               <button
                 type="button"
@@ -198,7 +198,7 @@ export default function MaintenanceModal({ isOpen, onClose, onAddRecord, current
                     : "bg-black border-white/10 text-white/60 hover:border-white/25"
                 }`}
               >
-                Carbon Slate
+                Otro
               </button>
             </div>
           </div>

@@ -1,5 +1,5 @@
 import React from "react";
-import { History, Settings, HelpCircle, X, Car, Activity, Zap } from "lucide-react";
+import { History, Settings, HelpCircle, X, Car, FileText } from "lucide-react";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -45,13 +45,9 @@ export default function Sidebar({ isOpen, onClose, onTabChange }: SidebarProps) 
             <div className="absolute top-0 left-0 w-1 h-full bg-[#FF3D00]" />
             <div className="pl-2">
               <span className="text-[#FF3D00] font-mono text-[9px] uppercase tracking-widest font-black block mb-1">
-                PILOTO DEL VEHÍCULO
+                PROPIETARIO
               </span>
-              <p className="text-white font-display font-bold text-lg select-text">Racer One // Mangonz</p>
-              <div className="mt-3 flex justify-between text-[9px] text-white/40 font-mono tracking-widest uppercase">
-                <span>FIRMWARE: V2.5.1</span>
-                <span>NOMINAL</span>
-              </div>
+              <p className="text-white font-display font-bold text-lg select-text">Mangonz</p>
             </div>
           </div>
 
@@ -76,29 +72,18 @@ export default function Sidebar({ isOpen, onClose, onTabChange }: SidebarProps) 
               className="w-full flex items-center gap-4 text-left p-3.5 border border-transparent hover:border-white/5 hover:bg-white/2 hover:text-[#FF3D00] text-white/70 transition-all cursor-pointer font-mono text-xs uppercase tracking-widest group"
             >
               <History className="w-4.5 h-4.5 text-[#FF3D00] group-hover:scale-110 transition-transform" />
-              <span>Diagnósticos & Citas</span>
+              <span>Mantenciones & Citas</span>
             </button>
 
             <button
               onClick={() => {
-                onTabChange("ai-assist");
+                onTabChange("documents");
                 onClose();
               }}
               className="w-full flex items-center gap-4 text-left p-3.5 border border-transparent hover:border-white/5 hover:bg-white/2 hover:text-[#FF3D00] text-white/70 transition-all cursor-pointer font-mono text-xs uppercase tracking-widest group"
             >
-              <Activity className="w-4.5 h-4.5 text-[#FF3D00] group-hover:scale-110 transition-transform" />
-              <span>Asistente Copiloto IA</span>
-            </button>
-
-            <button
-              onClick={() => {
-                onTabChange("metrics");
-                onClose();
-              }}
-              className="w-full flex items-center gap-4 text-left p-3.5 border border-transparent hover:border-white/5 hover:bg-white/2 hover:text-[#FF3D00] text-white/70 transition-all cursor-pointer font-mono text-xs uppercase tracking-widest group"
-            >
-              <Zap className="w-4.5 h-4.5 text-[#FF3D00] group-hover:scale-110 transition-transform" />
-              <span>Métricas de Telemetría</span>
+              <FileText className="w-4.5 h-4.5 text-[#FF3D00] group-hover:scale-110 transition-transform" />
+              <span>Documentos (SOAP, Rev. Técnica...)</span>
             </button>
 
             <div className="h-px bg-white/10 my-6" />
@@ -128,10 +113,7 @@ export default function Sidebar({ isOpen, onClose, onTabChange }: SidebarProps) 
         {/* Footer info inside menu */}
         <div className="pt-6 border-t border-white/5 text-center">
           <p className="font-mono text-[9px] text-white/30 uppercase tracking-[0.25em]">
-            PROPIEDAD DE MG RACING CO.
-          </p>
-          <p className="text-[9px] text-[#FF3D00] font-mono mt-1 font-bold uppercase tracking-widest">
-            STATE: ACTIVE_LINK
+            AutoData MG 350
           </p>
         </div>
       </div>

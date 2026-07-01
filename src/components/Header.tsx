@@ -1,5 +1,5 @@
 import React from "react";
-import { Menu, Radio } from "lucide-react";
+import { Menu, FileText } from "lucide-react";
 
 interface HeaderProps {
   onMenuToggle: () => void;
@@ -56,31 +56,21 @@ export default function Header({ onMenuToggle, activeTab, onTabChange }: HeaderP
             Servicio
           </button>
           <button
-            onClick={() => onTabChange("ai-assist")}
+            onClick={() => onTabChange("documents")}
             className={`font-mono text-[11px] font-bold tracking-[0.2em] uppercase transition-all duration-200 cursor-pointer pb-1 ${
-              activeTab === "ai-assist" 
+              activeTab === "documents" 
                 ? "text-white border-b-2 border-[#FF3D00]" 
                 : "text-white/50 hover:text-white"
             }`}
           >
-            Telemetría IA
-          </button>
-          <button
-            onClick={() => onTabChange("metrics")}
-            className={`font-mono text-[11px] font-bold tracking-[0.2em] uppercase transition-all duration-200 cursor-pointer pb-1 ${
-              activeTab === "metrics" 
-                ? "text-white border-b-2 border-[#FF3D00]" 
-                : "text-white/50 hover:text-white"
-            }`}
-          >
-            Métricas
+            Documentos
           </button>
         </nav>
 
-        {/* Live Active Satellite Link indicator */}
+        {/* Local-only storage indicator */}
         <div className="flex items-center gap-2 px-4 py-1.5 bg-white/5 border border-white/10 skew-box select-none">
-          <Radio className="w-3.5 h-3.5 text-[#FF3D00] animate-pulse" />
-          <span className="font-mono text-[9px] text-[#F0F0F0] font-bold tracking-widest">MONITOR ACTIVO</span>
+          <FileText className="w-3.5 h-3.5 text-[#FF3D00]" />
+          <span className="font-mono text-[9px] text-[#F0F0F0] font-bold tracking-widest">DATOS LOCALES</span>
         </div>
 
         {/* Driver profile avatar with design border */}

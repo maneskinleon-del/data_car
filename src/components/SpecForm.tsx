@@ -1,16 +1,15 @@
 import React from "react";
-import { Droplets, Sliders, Lightbulb, Save, Cpu } from "lucide-react";
+import { Droplets, Sliders, Lightbulb, Save } from "lucide-react";
 import { VehicleSpecs } from "../types";
 
 interface SpecFormProps {
   specs: VehicleSpecs;
   onUpdateSpecs: (newSpecs: Partial<VehicleSpecs>) => void;
   onSave: () => void;
-  onNavigateToAi: () => void;
   isSaving: boolean;
 }
 
-export default function SpecForm({ specs, onUpdateSpecs, onSave, onNavigateToAi, isSaving }: SpecFormProps) {
+export default function SpecForm({ specs, onUpdateSpecs, onSave, isSaving }: SpecFormProps) {
   
   const handleChange = (field: keyof VehicleSpecs, value: any) => {
     onUpdateSpecs({ [field]: value });
@@ -188,7 +187,7 @@ export default function SpecForm({ specs, onUpdateSpecs, onSave, onNavigateToAi,
           </div>
         </div>
 
-        {/* Buttons Action panels and controls with exact accent-gradient */}
+        {/* Save action */}
         <div className="md:col-span-2 flex flex-col sm:flex-row gap-4">
           <button
             onClick={onSave}
@@ -197,14 +196,6 @@ export default function SpecForm({ specs, onUpdateSpecs, onSave, onNavigateToAi,
           >
             <Save className="w-5 h-5 text-white" />
             {isSaving ? "GUARDANDO..." : "GUARDAR CAMBIOS"}
-          </button>
-          
-          <button
-            onClick={onNavigateToAi}
-            className="flex-grow border-2 border-[#FF8A00] text-[#FF8A00] hover:bg-[#FF8A00]/10 font-display text-md font-bold px-8 py-5 flex items-center justify-center gap-3 transition-transform active:scale-[0.98] cursor-pointer rounded-xl uppercase tracking-tighter"
-          >
-            <Cpu className="w-5 h-5 text-[#FF8A00]" />
-            PREGUNTAR A IA
           </button>
         </div>
 
