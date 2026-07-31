@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Layers,
   CheckCircle,
@@ -50,7 +50,11 @@ export default function App() {
     };
   });
 
+  // Refs espejo con el valor más reciente: base para el flush síncrono al cerrar la app.
+  const specsRef = useRef<VehicleSpecs>(specs);
+
   useEffect(() => {
+    specsRef.current = specs;
     localStorage.setItem("mg350_specs", JSON.stringify(specs));
   }, [specs]);
 
@@ -67,9 +71,36 @@ export default function App() {
     return [];
   });
 
+  const recordsRef = useRef<ServiceRecord[]>(records);
+
   useEffect(() => {
+    recordsRef.current = records;
     localStorage.setItem("mg350_services", JSON.stringify(records));
   }, [records]);
+
+  // Flush síncrono al cerrar la pestaña o pasar a segundo plano.
+  // Los efectos corren DESPUÉS del render: si la app se cierra de golpe en esa
+  // ventana, el último registro se perdía. Esto escribe en el mismo instante del
+  // cierre (localStorage es síncrono), sin depender del render/efecto.
+  useEffect(() => {
+    const flush = () => {
+      try {
+        localStorage.setItem("mg350_services", JSON.stringify(recordsRef.current));
+        localStorage.setItem("mg350_specs", JSON.stringify(specsRef.current));
+      } catch (e) {
+        console.error("Error al guardar estado al cerrar la app:", e);
+      }
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
 
   const triggerToast = (text: string) => {
     setToastMessage(text);
@@ -80,12 +111,27 @@ export default function App() {
 
   // Helper para agregar registros de mantenimiento
   const handleAddRecord = (newRecord: ServiceRecord) => {
-    setRecords([newRecord, ...records]);
+    // Write-through síncrono: se persiste en el MISMO instante, sin esperar
+    // el render ni el efecto. Si la app se cierra de golpe, el registro ya
+    // está guardado en localStorage.
+    const nextRecords = [newRecord, ...records];
+    setRecords(nextRecords);
+    recordsRef.current = nextRecords;
+    try {
+      localStorage.setItem("mg350_services", JSON.stringify(nextRecords));
+    } catch (e) {
+      console.error(e);
+    }
+
     if (newRecord.km > specs.ultimoCambioKm) {
-      setSpecs((prev) => ({
-        ...prev,
-        ultimoCambioKm: newRecord.km,
-      }));
+      const nextSpecs = { ...specs, ultimoCambioKm: newRecord.km };
+      setSpecs(nextSpecs);
+      specsRef.current = nextSpecs;
+      try {
+        localStorage.setItem("mg350_specs", JSON.stringify(nextSpecs));
+      } catch (e) {
+        console.error(e);
+      }
     }
     triggerToast(`"${newRecord.name.toUpperCase()}" REGISTRADO CON ÉXITO.`);
   };
