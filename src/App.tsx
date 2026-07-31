@@ -113,8 +113,9 @@ export default function App() {
   const handleAddRecord = (newRecord: ServiceRecord) => {
     // Write-through síncrono: se persiste en el MISMO instante, sin esperar
     // el render ni el efecto. Si la app se cierra de golpe, el registro ya
-    // está guardado en localStorage.
-    const nextRecords = [newRecord, ...records];
+    // está guardado en localStorage. Se lee del ref (no del closure) para
+    // que dos llamadas en el mismo tick no se pisen el registro.
+    const nextRecords = [newRecord, ...recordsRef.current];
     setRecords(nextRecords);
     recordsRef.current = nextRecords;
     try {
