@@ -118,21 +118,22 @@ export default function App() {
     const nextRecords = [newRecord, ...recordsRef.current];
     setRecords(nextRecords);
     recordsRef.current = nextRecords;
-    try {
-      localStorage.setItem("mg350_services", JSON.stringify(nextRecords));
-    } catch (e) {
-      console.error(e);
-    }
 
+    let nextSpecs: VehicleSpecs | null = null;
     if (newRecord.km > specsRef.current.ultimoCambioKm) {
-      const nextSpecs = { ...specsRef.current, ultimoCambioKm: newRecord.km };
+      nextSpecs = { ...specsRef.current, ultimoCambioKm: newRecord.km };
       setSpecs(nextSpecs);
       specsRef.current = nextSpecs;
-      try {
+    }
+
+    // Un solo try/catch para ambas escrituras (protege contra QuotaExceededError).
+    try {
+      localStorage.setItem("mg350_services", JSON.stringify(nextRecords));
+      if (nextSpecs) {
         localStorage.setItem("mg350_specs", JSON.stringify(nextSpecs));
-      } catch (e) {
-        console.error(e);
       }
+    } catch (e) {
+      console.error(e);
     }
     triggerToast(`"${newRecord.name.toUpperCase()}" REGISTRADO CON ÉXITO.`);
   };
