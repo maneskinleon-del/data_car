@@ -124,8 +124,8 @@ export default function App() {
       console.error(e);
     }
 
-    if (newRecord.km > specs.ultimoCambioKm) {
-      const nextSpecs = { ...specs, ultimoCambioKm: newRecord.km };
+    if (newRecord.km > specsRef.current.ultimoCambioKm) {
+      const nextSpecs = { ...specsRef.current, ultimoCambioKm: newRecord.km };
       setSpecs(nextSpecs);
       specsRef.current = nextSpecs;
       try {
