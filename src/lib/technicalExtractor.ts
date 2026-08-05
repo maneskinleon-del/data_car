@@ -31,6 +31,11 @@ const MAX_KEYWORD_DISTANCE = 180; // distancia máxima keyword → valor (chars)
 // ── Normalización de texto ───────────────────────────────────────────────────
 export function normalizeText(text: string): string {
   return text
+    // Acentos corruptos del text-layer del manual (í→Ì, é→È, ú→˙, ñ→Ò)
+    .replace(/Ì/g, "í")
+    .replace(/È/g, "é")
+    .replace(/˙/g, "ú")
+    .replace(/Ò/g, "ñ")
     .replace(/Û/g, "ó")
     .replace(/û/g, "ó")
     .replace(/Ï/g, "í")
@@ -96,7 +101,7 @@ export function segmentBySections(text: string): TextSection[] {
 }
 
 // ── Reglas de extracción por categoría ───────────────────────────────────────
-const EXTRACTION_RULES: ExtractionRule[] = [
+export const EXTRACTION_RULES: ExtractionRule[] = [
   // ── FLUIDOS ──
   {
     id: "engine_oil",
@@ -119,9 +124,19 @@ const EXTRACTION_RULES: ExtractionRule[] = [
     componentName: "Aceite de Transmisión",
     icon: "⚙️",
     sectionKeywords: [/transmisión|transmission|caja|gearbox/i],
-    fieldKeywords: [/transmisión\s+manual/i, /manual\s+transmission/i, /aceite\s+de\s+caja/i],
+    fieldKeywords: [
+      /transmisi[oó]n\s*[:：]/i, // "Transmisión: Llene Relleno seca 2 L" (¡con /i! el manual usa "Transmisión:" con mayúscula)
+      /transmisi[oó]n\s+manual/i,
+      /manual\s+transmission/i,
+      /transmission\s*oil/i,
+      /aceite\s+de\s+caja/i,
+      /caja\s+de\s+cambios/i,
+      /caja\s+de\s+velocidades/i,
+    ],
     valuePatterns: [
-      { pattern: /(\d+[.,]?\d*)\s*[Ll]/, groupName: "capacity" },
+      // Capacidad estricta: exige dígitos tras la coma/punto → rechaza artefactos
+      // tipo "18. L" o "6. L" (número truncado + " L") y captura "2 L"/"2,9 l".
+      { pattern: /(\d+(?:[.,]\d+)?)\s*[Ll]/, groupName: "capacity" },
       { pattern: /(GL-?[45]|75W-?90|80W-?90)/, groupName: "grade" },
     ],
     unitHint: "capacidad + grado",
@@ -260,7 +275,14 @@ const EXTRACTION_RULES: ExtractionRule[] = [
     componentName: "Torque de Rueda",
     icon: "🔧",
     sectionKeywords: [/rueda|wheel|neumático|tire/i],
-    fieldKeywords: [/(perno|tuerca|apriete)\s+(de\s+)?rueda/i, /wheel\s+nut/i],
+    fieldKeywords: [
+      // Excluye "rueda dentada" (sprockets del motor): solo ruedas del vehículo
+      /(perno|tuerca|tornillo|apriete)\s+(de\s+)?rueda(?!\s+dentada)/i,
+      /tornillos?\s+de\s+rueda/i, // p.517 "tornillos de rueda 115-130 Nm"
+      /pernos?\s+de\s+rueda/i,
+      /wheel\s+nut/i,
+      /wheel\s+bolt/i,
+    ],
     valuePatterns: [
       { pattern: /(\d{2,3})\s*[-–]?\s*(\d{2,3})?\s*Nm/, groupName: "torque" },
     ],
@@ -286,7 +308,7 @@ const EXTRACTION_RULES: ExtractionRule[] = [
     componentName: "Medida de Neumáticos",
     icon: "🛞",
     sectionKeywords: [/neumático|tire|rueda/i],
-    fieldKeywords: [/medida|size|dimensi[oó]n/i],
+    fieldKeywords: [/medida|tamañ[oa]|size|dimensi[oó]n/i],
     valuePatterns: [
       { pattern: /(\d{3})\/(\d{2})\s*R(\d{2})/, groupName: "size" },
     ],
@@ -298,14 +320,16 @@ const EXTRACTION_RULES: ExtractionRule[] = [
   {
     id: "compression",
     system: "motor",
-    componentName: "Presión de Compresión",
+    componentName: "Relación de Compresión",
     icon: "🔧",
     sectionKeywords: [/motor|engine/i],
     fieldKeywords: [/compresi[oó]n/i],
     valuePatterns: [
+      // El manual publica la RELACIÓN ("Índice de compresión 10.5: 1", p.79), no psi
+      { pattern: /(\d{1,2}[.,]\d{1,2})\s*[:]\s*1/, groupName: "ratio" },
       { pattern: /(\d{2,3})\s*[-–a]\s*(\d{2,3})\s*(psi|kg\/cm|kpa|bar)/i, groupName: "range" },
     ],
-    unitHint: "psi o kg/cm²",
+    unitHint: "relación (ej: 10.5:1) o psi",
     required: false,
   },
   {
@@ -327,7 +351,12 @@ const EXTRACTION_RULES: ExtractionRule[] = [
     componentName: "Juego de Válvulas",
     icon: "🔩",
     sectionKeywords: [/motor|engine|válvula|valve/i],
-    fieldKeywords: [/juego\s+de\s+v[aá]lvulas|holgura\s+de\s+v[aá]lvulas|valve\s+clearance/i],
+    fieldKeywords: [
+      /juego\s+de\s+v[aá]lvulas/i,
+      /holgura\s+de\s+v[aá]lvulas/i,
+      /valve\s+clearance/i,
+      /v[aá·]lvulas?:/i, // tolera el á corrupto del text-layer ("v·lvulas:")
+    ],
     valuePatterns: [
       { pattern: /(\d[.,]\d{1,3})\s*mm/, groupName: "clearance" },
     ],
@@ -572,6 +601,11 @@ export class TechnicalExtractor {
       confidence += 0.35;
     }
 
+    // Formato de relación de compresión (ej: 10.5: 1) — inconfundible
+    if (/^\d{1,2}[.,]\d{1,2}\s*[:]\s*1$/.test(value)) {
+      confidence += 0.3;
+    }
+
     // La keyword del campo aparece en la ventana de contexto
     for (const fk of rule.fieldKeywords) {
       fk.lastIndex = 0;
@@ -646,6 +680,7 @@ export class TechnicalExtractor {
               case "size": component.specification = dataPoint; break;
               case "range": component.pressure = dataPoint; break;
               case "clearance": component.gap = dataPoint; break;
+              case "ratio": component.specification = dataPoint; break;
               default: component.specification = dataPoint;
             }
           }

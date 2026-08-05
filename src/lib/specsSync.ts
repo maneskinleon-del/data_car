@@ -131,6 +131,13 @@ export function buildSpecsSync(db: VehicleTechnicalDatabase): Partial<VehicleSpe
     if (v) sync.capacidadEstanque = v;
   }
 
+  // Torque de rueda: apriete de tornillos (ej: "115-130 Nm")
+  const wheelTorque = findComponent(db, "neumaticos", "wheel_torque");
+  if (wheelTorque) {
+    const v = val(wheelTorque.torque);
+    if (v) sync.torqueTornillos = v;
+  }
+
   return sync;
 }
 
