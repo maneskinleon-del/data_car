@@ -64,6 +64,15 @@ const VALIDATION_BADGE: Record<string, { text: string; cls: string }> = {
   invalid: { text: "INVÁLIDO", cls: "text-white/30" },
 };
 
+// Etiquetas de origen de la pieza (manual ≠ catálogo ≠ dueño)
+const PART_SOURCE_LABEL: Record<string, string> = {
+  equivalence: "equivalencia",
+  catalog: "catálogo",
+  aftermarket: "aftermarket",
+  manual: "manual",
+  user: "instalado por el dueño",
+};
+
 // Sección de catálogo (Fase 2): referencias externas al manual, con su nivel
 // de verificación. verified:true → ✓ comprable con confianza;
 // verified:false → ⚠️ candidata, verificar antes de comprar.
@@ -96,12 +105,13 @@ function CatalogSection({ parts }: { parts: PartInfo[] }) {
                 <span className="font-mono text-[8px] text-amber-400">⚠️ SIN VERIFICAR</span>
               )}
               <span className="font-mono text-[8px] text-white/30">
-                {p.source === "equivalence" ? "equivalencia" : p.source}
+                {PART_SOURCE_LABEL[p.source] ?? p.source}
               </span>
             </div>
             {p.oem && (
               <p className="font-mono text-[10px] text-white/90">
-                OEM <span className="text-cyan-300 font-bold">{p.oem}</span>
+                {p.source === "user" ? "Instalado" : "OEM"}{" "}
+                <span className="text-cyan-300 font-bold">{p.oem}</span>
               </p>
             )}
             <div className="grid grid-cols-1 gap-1 mt-1.5">
@@ -430,7 +440,7 @@ export default function TechnicalDatabaseTab({
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<TechnicalComponentV2[]>([]);
   const [expandedSystems, setExpandedSystems] = useState<Set<SystemCategory>>(
-    new Set(["motor", "fluidos", "encendido", "transmision"])
+    new Set(["motor", "fluidos", "encendido", "transmision", "carroceria", "electrico"])
   );
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const layoutRef = useRef<DocumentLayout | null>(null);

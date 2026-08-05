@@ -18,6 +18,7 @@ import {
   TechnicalComponentV2,
   SpecField,
   SystemCategory,
+  PartInfo,
 } from "../types/technicalV2";
 import { lookupVerifiedParts } from "./partsCatalogProvider";
 
@@ -77,6 +78,38 @@ function join(...parts: (string | null | undefined)[]): string | null {
   return filtered.length > 0 ? filtered.join(" · ") : null;
 }
 
+/**
+ * Cadena de referencia de una pieza del catálogo.
+ * - source "user" (instalada/medida por el dueño): la referencia es la que
+ *   está físicamente en el vehículo.
+ * - equivalencia/catálogo: OEM + primeras 2 marcas cruzadas.
+ */
+function partRefString(p: PartInfo): string | null {
+  const refs = p.aftermarket.map((a) => `${a.brand} ${a.partNumber}`);
+  if (p.source === "user") {
+    return join(p.oem, ...refs);
+  }
+  return join(p.oem ? `OEM ${p.oem}` : null, ...refs.slice(0, 2));
+}
+
+/**
+ * Sincroniza un componente del catálogo a la ficha: SOLO piezas verified
+ * (Prioridad 1: un dato incorrecto es peor que uno ausente), y con
+ * preferencia por la pieza instalada/medida por el dueño (source "user") —
+ * la verdad de terreno para este vehículo.
+ */
+function syncCatalogPart(
+  sync: Partial<VehicleSpecs>,
+  key: keyof VehicleSpecs,
+  componentId: string
+): void {
+  const verified = lookupVerifiedParts(componentId);
+  if (verified.length === 0) return;
+  const preferred = verified.find((p) => p.source === "user") ?? verified[0];
+  const v = partRefString(preferred);
+  if (v) (sync as Record<string, unknown>)[key] = v;
+}
+
 function detectTransmission(current: VehicleSpecs): "mt" | "at" | undefined {
   const t = (current.transmision || "").toLowerCase();
   if (/manual|mt\b/.test(t)) return "mt";
@@ -96,6 +129,9 @@ const FIELD_LABELS: Record<string, string> = {
   tipoCombustible: "Combustible",
   torqueTornillos: "Torque tornillos",
   filtroAceite: "Filtro aceite (catálogo)",
+  filtroAire: "Filtro aire (catálogo)",
+  plumillaL: "Plumilla",
+  iluminacionPrincipal: "Iluminación",
 };
 
 // ── Construcción del mapeo Base Técnica V2 → Ficha ─────────────────────────
@@ -176,17 +212,13 @@ export function buildSpecsSyncV2(
     if (v) sync.torqueTornillos = v;
   }
 
-  // Filtro de aceite — Fase 2 (CATÁLOGO, no manual): solo referencias
-  // VERIFICADAS se sincronizan. El aire/habitáculo son candidatos sin
-  // verificar → NUNCA llegan a la ficha (Prioridad 1: un dato incorrecto es
-  // peor que uno ausente).
-  const oilFilters = lookupVerifiedParts("oil_filter");
-  if (oilFilters.length > 0) {
-    const p = oilFilters[0];
-    const refs = p.aftermarket.map((a) => `${a.brand} ${a.partNumber}`);
-    const v = join(p.oem ? `OEM ${p.oem}` : null, ...refs.slice(0, 2));
-    if (v) sync.filtroAceite = v;
-  }
+  // ── Fase 2 (CATÁLOGO, no manual): solo piezas VERIFICADAS llegan a la
+  // ficha; candidatas y no-disponibles NUNCA (Prioridad 1). Se prefiere la
+  // pieza instalada/medida por el dueño (source "user").
+  syncCatalogPart(sync, "filtroAceite", "oil_filter");
+  syncCatalogPart(sync, "filtroAire", "air_filter");
+  syncCatalogPart(sync, "plumillaL", "wiper_blade");
+  syncCatalogPart(sync, "iluminacionPrincipal", "headlight");
 
   return sync;
 }

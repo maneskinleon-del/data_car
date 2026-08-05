@@ -3,18 +3,22 @@
 // ============================================================================
 // Prioridad 7 de la auditoría: el manual de taller NO publica referencias de
 // filtros. Esta segunda fuente las aporta, SIN mezclarse con la extracción
-// del manual (manual ≠ catálogo OEM ≠ equivalencia aftermarket).
+// del manual (manual ≠ catálogo OEM ≠ equivalencia aftermarket ≠ dato del
+// dueño).
 //
 // Regla de oro: NINGÚN dato se inventa. Cada entrada declara:
-//   verified: true  → referencia confirmada en catálogo con vehículo/motor
-//                     en su lista de compatibilidad (fuente anotada).
+//   verified: true  → referencia confirmada (catálogo con vehículo/motor en
+//                     su compatibilidad, O pieza instalada/medida por el dueño).
 //   verified: false → candidata o ambiguo: se MUESTRA con advertencia pero
 //                     NUNCA se sincroniza a la ficha como dato definitivo.
 //
-// Fuente consultada: catálogos europeos MANN-FILTER / MAHLE / BOSCH vía
-// Autodoc (2026-08-05). Los catálogos europeos NO listan oficialmente el
-// MG 350 / Roewe 350; por eso solo el filtro de aceite quedó verificado
-// (su página de producto incluye el motor 1.5 VTi en compatibilidad).
+// Fuentes:
+//   • Catálogos europeos MANN-FILTER / MAHLE / BOSCH vía Autodoc (2026-08-05).
+//     Los catálogos europeos NO listan oficialmente el MG 350 / Roewe 350;
+//     por eso solo el filtro de aceite quedó verificado por catálogo (su
+//     página de producto incluye el motor 1.5 VTi en compatibilidad).
+//   • Datos del DUEÑO (source: "user"): piezas instaladas/medidas en el
+//     MG 350S real — la verificación más fuerte que existe para este vehículo.
 // ============================================================================
 
 import { PartInfo } from "../types/technicalV2";
@@ -25,10 +29,12 @@ export interface CatalogEntry {
 }
 
 export const PARTS_CATALOG: CatalogEntry[] = [
-  // ── Filtro de aceite — VERIFICADO ─────────────────────────────────────────
-  // Autodoc (página de producto MANN-FILTER W 713/28): compatibilidad incluye
-  // MG/SAIC/HUIZHONG 1.5 VTi; OE publicados: LPW 100180, 10073599, 10276597,
-  // 710000263. Cruces de marca tomados del mismo catálogo cruzado.
+  // ── Filtro de aceite ──────────────────────────────────────────────────────
+  // 1) Equivalencia VERIFICADA por catálogo (Autodoc, página del W 713/28:
+  //    compatibilidad incluye MG/SAIC 1.5 VTi; OE publicados LPW 100180,
+  //    10073599, 10276597, 710000263).
+  // 2) Pieza instalada por el DUEÑO (UJ-1797, hilo 13/16") — la referencia
+  //    que actualmente está en el motor.
   {
     componentId: "oil_filter",
     parts: [
@@ -47,27 +53,75 @@ export const PARTS_CATALOG: CatalogEntry[] = [
         verified: true,
         note: "Verificado contra catálogo MANN-FILTER vía Autodoc: el W 713/28 lista el motor 1.5 VTi en su compatibilidad. OE alternativos publicados: 10073599, 10276597, 710000263.",
       },
+      {
+        oem: "UJ-1797",
+        aftermarket: [],
+        compatible: ["MG 350S 1.5 — instalado por el dueño"],
+        source: "user",
+        verified: true,
+        note: "Filtro instalado por el dueño. Hilo 13/16\". Último filtro de aceite puesto en el vehículo.",
+      },
     ],
   },
 
-  // ── Filtro de aire — CANDIDATO (sin verificar) ────────────────────────────
-  // La categoría MG 350 en Autodoc mezcla DOS tipos de filtro de aire (panel
-  // plano y cartucho cilíndrico) porque agrupa motores distintos. Para el
-  // 1.5 VTi con caja de aire de plástico el panel plano es lo más probable,
-  // pero NO está confirmado → verified: false.
+  // ── Filtro de aire ────────────────────────────────────────────────────────
+  // El dueño midió el filtro real del capó: 26 × 9 cm (panel). La categoría
+  // MG 350 en Autodoc mezcla dos tipos (panel plano y cartucho cilíndrico);
+  // el C 2774 (26,8 × 10,8 cm) es el candidato de panel más cercano pero NO
+  // coincide con la medida exacta → sigue sin verificar.
   {
     componentId: "air_filter",
     parts: [
+      {
+        oem: "26 × 9 cm (panel, medido)",
+        aftermarket: [],
+        compatible: ["MG 350S 1.5 — filtro del capó, medido por el dueño"],
+        source: "user",
+        verified: true,
+        note: "Filtro de aire del capó (caja de aire): panel de 26 × 9 cm medido por el dueño. Referencia de marca aún por confirmar con esa medida.",
+      },
       {
         aftermarket: [
           { brand: "MANN-FILTER", partNumber: "C 2774" },
           { brand: "MAHLE", partNumber: "LX 719" },
           { brand: "BOSCH", partNumber: "1 457 433 781" },
         ],
-        compatible: ["Candidato panel plano ≈ 268 × 108 × 57 mm"],
+        compatible: ["Candidato panel plano ≈ 26,8 × 10,8 × 5,7 cm"],
         source: "equivalence",
         verified: false,
-        note: "SIN VERIFICAR para el 1.5 VTi: los catálogos europeos no listan oficialmente el MG 350 y la categoría mezcla panel plano y cartucho cilíndrico. Mide el filtro actual antes de comprar.",
+        note: "SIN VERIFICAR: el filtro real medido por el dueño es 26 × 9 cm; el C 2774 es 26,8 × 10,8 cm (ancho distinto). Compara con tu filtro antes de comprar.",
+      },
+    ],
+  },
+
+  // ── Plumilla / Limpiaparabrisas ───────────────────────────────────────────
+  // Instalada por el dueño: 23" (59 cm), gancho tipo J.
+  {
+    componentId: "wiper_blade",
+    parts: [
+      {
+        oem: "23\" (59 cm) · tipo J",
+        aftermarket: [],
+        compatible: ["MG 350S — plumilla instalada por el dueño"],
+        source: "user",
+        verified: true,
+        note: "Plumilla instalada por el dueño: 59 cm (23\"), gancho tipo J. El dueño también anotó \"H4 (20mm)\" junto a la plumilla — posible ancho/adaptador, sin confirmar. Aplica al lado del conductor.",
+      },
+    ],
+  },
+
+  // ── Iluminación principal ─────────────────────────────────────────────────
+  // LEDs H4 instalados por el dueño.
+  {
+    componentId: "headlight",
+    parts: [
+      {
+        oem: "H4 LED",
+        aftermarket: [],
+        compatible: ["MG 350S — iluminación principal instalada por el dueño"],
+        source: "user",
+        verified: true,
+        note: "Focos LED H4 instalados por el dueño en la iluminación principal.",
       },
     ],
   },

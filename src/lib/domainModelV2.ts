@@ -442,6 +442,44 @@ export const COMPONENT_DEFS: ComponentDef[] = [
       },
     ],
   },
+  {
+    // Plumilla / limpiaparabrisas — el manual no publica la referencia; el
+    // catálogo (Fase 2) la aporta con los datos instalados por el dueño.
+    id: "wiper_blade",
+    system: "carroceria",
+    name: "Plumilla / Limpiaparabrisas",
+    icon: "🌧️",
+    slots: [
+      {
+        id: "partNumber",
+        label: "Referencia",
+        concept: /plumilla|limpiaparabrisas/i,
+        valuePattern: /\d{2}\s*[“”"]|\d{2,3}\s*cm/i,
+        unit: "ref",
+        scope: "never-publishes",
+        transform: (r) => r.trim(),
+      },
+    ],
+  },
+  {
+    // Iluminación principal — el manual no publica la referencia; el catálogo
+    // la aporta (LED H4 instalados por el dueño).
+    id: "headlight",
+    system: "electrico",
+    name: "Iluminación Principal",
+    icon: "💡",
+    slots: [
+      {
+        id: "partNumber",
+        label: "Referencia",
+        concept: /iluminaci[oó]n|faro|headlight/i,
+        valuePattern: /H\d|LED|\d+\s*W/i,
+        unit: "ref",
+        scope: "never-publishes",
+        transform: (r) => r.trim(),
+      },
+    ],
+  },
 ];
 
 export function getComponentDef(id: string): ComponentDef | undefined {
