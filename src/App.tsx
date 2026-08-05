@@ -38,6 +38,7 @@ export default function App() {
       dimensionNeumaticos: "",
       iluminacionPrincipal: "",
       plumillaL: "",
+      plumillaR: "",
       filtroAire: "",
       ultimoCambioKm: 0,
       // Manual fields

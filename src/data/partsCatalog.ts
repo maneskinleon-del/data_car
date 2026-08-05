@@ -94,8 +94,11 @@ export const PARTS_CATALOG: CatalogEntry[] = [
     ],
   },
 
-  // ── Plumilla / Limpiaparabrisas ───────────────────────────────────────────
-  // Instalada por el dueño: 23" (59 cm), gancho tipo J.
+  // ── Plumillas / Limpiaparabrisas delanteras ───────────────────────────────
+  // Instaladas por el dueño: conductor 23" (59 cm) y pasajero 16" (40 cm),
+  // ambas con gancho tipo J. El MG 350S es un SEDÁN → NO tiene plumilla
+  // trasera (verificado en catálogos: los kits del Roewe 350 se venden como
+  // juego frontal de 2 piezas, sin trasera).
   {
     componentId: "wiper_blade",
     parts: [
@@ -105,7 +108,34 @@ export const PARTS_CATALOG: CatalogEntry[] = [
         compatible: ["MG 350S — plumilla instalada por el dueño"],
         source: "user",
         verified: true,
-        note: "Plumilla instalada por el dueño: 59 cm (23\"), gancho tipo J. El dueño también anotó \"H4 (20mm)\" junto a la plumilla — posible ancho/adaptador, sin confirmar. Aplica al lado del conductor.",
+        side: "driver",
+        note: "Plumilla del CONDUCTOR instalada por el dueño: 59 cm (23\"), gancho tipo J. El dueño también anotó \"H4 (20mm)\" junto a la plumilla — posible ancho/adaptador, sin confirmar.",
+      },
+      {
+        oem: "16\" (40 cm) · tipo J",
+        aftermarket: [],
+        compatible: ["MG 350S — plumilla del pasajero, medida por el dueño"],
+        source: "user",
+        verified: true,
+        side: "passenger",
+        note: "Plumilla del PASAJERO: 16\" (40 cm), gancho tipo J, según el dueño.",
+      },
+    ],
+  },
+
+  // ── Plumilla trasera — NO APLICA ──────────────────────────────────────────
+  // El MG 350S es un sedán de 3 volúmenes: no lleva limpiaparabrisas trasero
+  // (elemento reservado a hatchback/SUV). Se declara explícitamente para que
+  // el usuario no busque una pieza que el vehículo no tiene.
+  {
+    componentId: "wiper_rear",
+    parts: [
+      {
+        aftermarket: [],
+        compatible: [],
+        source: "catalog",
+        verified: false,
+        note: "No aplica: el MG 350S es un sedán y NO tiene plumilla trasera. Los juegos del Roewe 350 se venden como kit frontal de 2 piezas.",
       },
     ],
   },

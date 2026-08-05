@@ -97,15 +97,19 @@ function partRefString(p: PartInfo): string | null {
  * (Prioridad 1: un dato incorrecto es peor que uno ausente), y con
  * preferencia por la pieza instalada/medida por el dueño (source "user") —
  * la verdad de terreno para este vehículo.
+ * @param side filtro opcional por lado (p.ej. plumillas driver/passenger).
  */
 function syncCatalogPart(
   sync: Partial<VehicleSpecs>,
   key: keyof VehicleSpecs,
-  componentId: string
+  componentId: string,
+  side?: "driver" | "passenger"
 ): void {
   const verified = lookupVerifiedParts(componentId);
   if (verified.length === 0) return;
-  const preferred = verified.find((p) => p.source === "user") ?? verified[0];
+  const bySide = side ? verified.filter((p) => p.side === side) : verified;
+  if (bySide.length === 0) return;
+  const preferred = bySide.find((p) => p.source === "user") ?? bySide[0];
   const v = partRefString(preferred);
   if (v) (sync as Record<string, unknown>)[key] = v;
 }
@@ -130,7 +134,8 @@ const FIELD_LABELS: Record<string, string> = {
   torqueTornillos: "Torque tornillos",
   filtroAceite: "Filtro aceite (catálogo)",
   filtroAire: "Filtro aire (catálogo)",
-  plumillaL: "Plumilla",
+  plumillaL: "Plumilla conductor",
+  plumillaR: "Plumilla pasajero",
   iluminacionPrincipal: "Iluminación",
 };
 
@@ -217,7 +222,9 @@ export function buildSpecsSyncV2(
   // pieza instalada/medida por el dueño (source "user").
   syncCatalogPart(sync, "filtroAceite", "oil_filter");
   syncCatalogPart(sync, "filtroAire", "air_filter");
-  syncCatalogPart(sync, "plumillaL", "wiper_blade");
+  // Plumillas: conductor → plumillaL, pasajero → plumillaR (filtrando por lado)
+  syncCatalogPart(sync, "plumillaL", "wiper_blade", "driver");
+  syncCatalogPart(sync, "plumillaR", "wiper_blade", "passenger");
   syncCatalogPart(sync, "iluminacionPrincipal", "headlight");
 
   return sync;

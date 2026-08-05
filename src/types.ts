@@ -8,7 +8,8 @@ export interface VehicleSpecs {
   transmision: 'Mecánica' | 'Automática' | 'DCT Performance';
   dimensionNeumaticos: string;
   iluminacionPrincipal: string;
-  plumillaL: string;
+  plumillaL: string;           // Plumilla lado conductor (izquierdo en Chile)
+  plumillaR: string;           // Plumilla lado pasajero (derecho)
   filtroAire: string;
   ultimoCambioKm: number;
   // === Datos del Manual (extraídos o ingresados por el usuario) ===

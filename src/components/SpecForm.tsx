@@ -170,14 +170,26 @@ export default function SpecForm({ specs, onUpdateSpecs, onSave, isSaving }: Spe
               </div>
               <div>
                 <label className="block font-mono text-[9px] text-white/50 uppercase font-bold tracking-widest mb-1.5">
-                  PLUMILLA
+                  PLUMILLA CONDUCTOR
                 </label>
-                <textarea
-                  rows={2}
+                <input
+                  type="text"
                   value={specs.plumillaL}
                   onChange={(e) => handleChange("plumillaL", e.target.value)}
-                  className="w-full input-field p-3 font-mono text-xs text-white rounded bg-black outline-none border border-white/10 resize-none leading-normal"
-                  placeholder='23"'
+                  className="w-full input-field p-3 font-mono text-xs text-white rounded bg-black outline-none border border-white/10"
+                  placeholder='p. ej. 23" / 59 cm · tipo J'
+                />
+              </div>
+              <div>
+                <label className="block font-mono text-[9px] text-white/50 uppercase font-bold tracking-widest mb-1.5">
+                  PLUMILLA PASAJERO
+                </label>
+                <input
+                  type="text"
+                  value={specs.plumillaR}
+                  onChange={(e) => handleChange("plumillaR", e.target.value)}
+                  className="w-full input-field p-3 font-mono text-xs text-white rounded bg-black outline-none border border-white/10"
+                  placeholder='p. ej. 16" / 40 cm · tipo J'
                 />
               </div>
             </div>

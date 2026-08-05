@@ -88,6 +88,7 @@ export interface PartInfo {
   provenance?: SourceRef;          // si vino del manual
   verified: boolean;               // true → referencia confirmada; false → candidata
   note?: string;                   // nota de verificación / origen / advertencia
+  side?: "driver" | "passenger";   // para piezas con lado (p.ej. plumillas)
 }
 
 export interface PartsCatalogProvider {

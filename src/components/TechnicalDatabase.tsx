@@ -73,6 +73,12 @@ const PART_SOURCE_LABEL: Record<string, string> = {
   user: "instalado por el dueño",
 };
 
+// Lado de la pieza (plumillas)
+const PART_SIDE_LABEL: Record<string, string> = {
+  driver: "conductor",
+  passenger: "pasajero",
+};
+
 // Sección de catálogo (Fase 2): referencias externas al manual, con su nivel
 // de verificación. verified:true → ✓ comprable con confianza;
 // verified:false → ⚠️ candidata, verificar antes de comprar.
@@ -98,7 +104,7 @@ function CatalogSection({ parts }: { parts: PartInfo[] }) {
                 : "border-amber-500/25 bg-amber-500/5"
             }`}
           >
-            <div className="flex items-center gap-2 mb-1.5">
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
               {p.verified ? (
                 <span className="font-mono text-[8px] text-emerald-400">✓ VERIFICADO</span>
               ) : (
@@ -107,6 +113,11 @@ function CatalogSection({ parts }: { parts: PartInfo[] }) {
               <span className="font-mono text-[8px] text-white/30">
                 {PART_SOURCE_LABEL[p.source] ?? p.source}
               </span>
+              {p.side && (
+                <span className="px-1 py-0.5 bg-white/5 border border-white/10 text-white/50 font-mono text-[7px] rounded">
+                  {PART_SIDE_LABEL[p.side] ?? p.side}
+                </span>
+              )}
             </div>
             {p.oem && (
               <p className="font-mono text-[10px] text-white/90">

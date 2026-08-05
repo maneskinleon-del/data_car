@@ -444,16 +444,36 @@ export const COMPONENT_DEFS: ComponentDef[] = [
   },
   {
     // Plumilla / limpiaparabrisas — el manual no publica la referencia; el
-    // catálogo (Fase 2) la aporta con los datos instalados por el dueño.
+    // catálogo (Fase 2) la aporta con los datos instalados por el dueño
+    // (conductor 23" y pasajero 16", ambas tipo J).
     id: "wiper_blade",
     system: "carroceria",
-    name: "Plumilla / Limpiaparabrisas",
+    name: "Plumillas Delanteras",
     icon: "🌧️",
     slots: [
       {
         id: "partNumber",
         label: "Referencia",
         concept: /plumilla|limpiaparabrisas/i,
+        valuePattern: /\d{2}\s*[“”"]|\d{2,3}\s*cm/i,
+        unit: "ref",
+        scope: "never-publishes",
+        transform: (r) => r.trim(),
+      },
+    ],
+  },
+  {
+    // Plumilla trasera — NO APLICA en el MG 350S (sedán). El componente
+    // existe para declararlo explícitamente en la UI (mejor que un silencio).
+    id: "wiper_rear",
+    system: "carroceria",
+    name: "Plumilla Trasera",
+    icon: "🌧️",
+    slots: [
+      {
+        id: "partNumber",
+        label: "Referencia",
+        concept: /plumilla\s+trasera|limpiaparabrisas\s+trasero/i,
         valuePattern: /\d{2}\s*[“”"]|\d{2,3}\s*cm/i,
         unit: "ref",
         scope: "never-publishes",
