@@ -27,15 +27,7 @@ export default function App() {
 
   // 1. Core Vehicle Specs State (persistido en localStorage)
   const [specs, setSpecs] = useState<VehicleSpecs>(() => {
-    const saved = localStorage.getItem("mg350_specs");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    return {
+    const defaults: VehicleSpecs = {
       chassis: "#8829-XP",
       marca: "MG 350",
       propietario: "Mangonz",
@@ -46,7 +38,6 @@ export default function App() {
       dimensionNeumaticos: "",
       iluminacionPrincipal: "",
       plumillaL: "",
-      alfombra: "",
       filtroAire: "",
       ultimoCambioKm: 0,
       // Manual fields
@@ -64,6 +55,19 @@ export default function App() {
       dimensiones: "",
       manualPdfNombre: "",
     };
+
+    const saved = localStorage.getItem("mg350_specs");
+    if (saved) {
+      try {
+        // Fusionar con defaults: datos guardados de versiones anteriores pueden
+        // no tener los campos nuevos (ej. refrigerante, bujias) → sin merge
+        // quedarían undefined y el input se volvería no controlado.
+        return { ...defaults, ...JSON.parse(saved) };
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return defaults;
   });
 
   // Refs espejo con el valor más reciente: base para el flush síncrono al cerrar la app.

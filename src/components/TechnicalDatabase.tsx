@@ -9,6 +9,7 @@ import {
   Trash2,
   Zap,
   Info,
+  Link2,
 } from "lucide-react";
 import * as pdfjsLib from "pdfjs-dist";
 import { VehicleSpecs } from "../types";
@@ -22,7 +23,10 @@ import {
   normalizeText,
   formatDataPoint,
   getCoverageColor,
+  countFilledFields,
+  SYSTEM_RULE_COUNTS,
 } from "../lib/technicalExtractor";
+import { applySpecsSync } from "../lib/specsSync";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
@@ -109,7 +113,7 @@ function ComponentCard({ component }: { component: Component; key?: string }) {
   );
 }
 
-// Panel de cobertura técnica
+// Panel de cobertura técnica — % por sistema = componentes con dato real / reglas del sistema
 function CoveragePanel({ database }: { database: VehicleTechnicalDatabase }) {
   const systems = Object.entries(database.components) as [SystemCategory, Component[]][];
   const totalComponents = systems.reduce((sum, [, comps]) => sum + comps.length, 0);
@@ -123,8 +127,9 @@ function CoveragePanel({ database }: { database: VehicleTechnicalDatabase }) {
       <div className="space-y-3">
         {systems.map(([system, components]) => {
           const config = SYSTEM_CONFIG[system];
-          const count = components.length;
-          const percent = Math.min(100, count * 25); // 4 componentes = 100%
+          const totalRules = SYSTEM_RULE_COUNTS[system] || 0;
+          const filled = components.filter((c) => countFilledFields(c) > 0).length;
+          const percent = totalRules > 0 ? Math.min(100, Math.round((filled / totalRules) * 100)) : 0;
           
           return (
             <div key={system} className="flex items-center gap-3">
@@ -132,7 +137,7 @@ function CoveragePanel({ database }: { database: VehicleTechnicalDatabase }) {
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-1">
                   <span className="font-mono text-[9px] text-white/60">{config.label}</span>
-                  <span className="font-mono text-[8px] text-white/40">{count}</span>
+                  <span className="font-mono text-[8px] text-white/40">{filled}/{totalRules}</span>
                 </div>
                 <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
                   <div 
@@ -148,11 +153,11 @@ function CoveragePanel({ database }: { database: VehicleTechnicalDatabase }) {
       
       <div className="mt-4 pt-4 border-t border-white/10">
         <div className="flex items-center justify-between">
-          <span className="font-mono text-xs text-white/60">Total componentes</span>
+          <span className="font-mono text-xs text-white/60">Componentes con datos</span>
           <span className="font-mono text-sm text-white font-bold">{totalComponents}</span>
         </div>
         <div className="flex items-center justify-between mt-1">
-          <span className="font-mono text-xs text-white/60">Cobertura</span>
+          <span className="font-mono text-xs text-white/60">Cobertura (datos verificados)</span>
           <span className="font-mono text-sm text-emerald-400 font-bold">{database.coveragePercent}%</span>
         </div>
         <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden mt-2">
@@ -225,6 +230,7 @@ export default function TechnicalDatabaseTab({
   triggerToast,
 }: TechnicalDatabaseProps) {
   const [pdfText, setPdfText] = useState<string>("");
+  const [pdfPages, setPdfPages] = useState<string[]>([]);
   const [pdfName, setPdfName] = useState<string>(specs.manualPdfNombre || "");
   const [loading, setLoading] = useState(false);
   const [database, setDatabase] = useState<VehicleTechnicalDatabase | null>(null);
@@ -247,7 +253,8 @@ export default function TechnicalDatabaseTab({
     }
   }, [database]);
   
-  // Load persisted database on mount
+  // Load persisted database on mount + auto-sync campos vacíos de la ficha.
+  // Cubre bases construidas antes de que existiera la sincronización.
   useEffect(() => {
     if (specs.manualPdfNombre && !database) {
       try {
@@ -256,13 +263,17 @@ export default function TechnicalDatabaseTab({
           const parsed = JSON.parse(saved) as VehicleTechnicalDatabase;
           if (parsed.extractionSource === specs.manualPdfNombre) {
             setDatabase(parsed);
+            const { updates } = applySpecsSync(specs, parsed, false);
+            if (Object.keys(updates).length > 0) {
+              onUpdateSpecs(updates);
+            }
           }
         }
       } catch (e) {
         console.error("Error loading technical database:", e);
       }
     }
-  }, [specs.manualPdfNombre]);
+  }, [specs.manualPdfNombre, database, specs, onUpdateSpecs]);
   
   const extractTextFromPdf = useCallback(
     async (file: File) => {
@@ -286,11 +297,13 @@ export default function TechnicalDatabaseTab({
         }
         
         let fullText = "";
+        const pages: string[] = [];
         for (let i = 1; i <= pdf.numPages; i++) {
           try {
             const page = await pdf.getPage(i);
             const textContent = await page.getTextContent();
             const pageText = textContent.items.map((item: any) => item.str).join(" ");
+            pages.push(pageText);
             fullText += pageText + "\n";
           } catch (pageError) {
             console.warn(`Error en página ${i}:`, pageError);
@@ -305,8 +318,10 @@ export default function TechnicalDatabaseTab({
         }
         
         setPdfText(fullText);
+        setPdfPages(pages);
         setPdfName(file.name);
         setDatabase(null);
+        extractorRef.current = null; // la base cacheada pertenece al PDF anterior
         onUpdateSpecs({ manualPdfNombre: file.name });
       } catch (error: any) {
         triggerToast(`Error: ${error.message || "No se pudo procesar el PDF"}`);
@@ -318,12 +333,12 @@ export default function TechnicalDatabaseTab({
   );
   
   const handleExtract = useCallback(() => {
-    if (!pdfText) {
+    if (!pdfText && pdfPages.length === 0) {
       triggerToast("Primero carga un manual PDF.");
       return;
     }
     
-    const extractor = new TechnicalExtractor(pdfText);
+    const extractor = new TechnicalExtractor(pdfPages.length > 0 ? pdfPages : pdfText);
     extractorRef.current = extractor;
     const newDatabase = extractor.buildDatabase();
     newDatabase.extractionSource = pdfName;
@@ -333,19 +348,44 @@ export default function TechnicalDatabaseTab({
       .flat()
       .length;
     
+    // Auto-sync a la ficha: llena campos vacíos con los datos verificados
+    // (no pisa datos que el usuario haya ingresado manualmente).
+    const { updates, labels } = applySpecsSync(specs, newDatabase, false);
+    if (Object.keys(updates).length > 0) {
+      onUpdateSpecs(updates);
+    }
+    
+    const syncNote =
+      labels.length > 0 ? ` · Ficha: +${labels.join(", ")}` : "";
+    
     triggerToast(
-      `Base técnica construida: ${totalComponents} componentes detectados (${newDatabase.coveragePercent}% cobertura)`
+      `Base técnica construida: ${totalComponents} componentes con datos verificados (${newDatabase.coveragePercent}% cobertura)${syncNote}`
     );
-  }, [pdfText, pdfName, triggerToast]);
+  }, [pdfText, pdfPages, pdfName, specs, onUpdateSpecs, triggerToast]);
+
+  // Sincronización forzada: sobreescribe los campos de la ficha con el manual
+  const handleSyncToSpecs = useCallback(() => {
+    if (!database) {
+      triggerToast("Primero construye la base técnica.");
+      return;
+    }
+    const { updates, labels } = applySpecsSync(specs, database, true);
+    if (Object.keys(updates).length === 0) {
+      triggerToast("La ficha ya está sincronizada con el manual.");
+      return;
+    }
+    onUpdateSpecs(updates);
+    triggerToast(`Ficha sincronizada: ${labels.join(", ")}`);
+  }, [database, specs, onUpdateSpecs, triggerToast]);
   
   const handleSearch = useCallback(() => {
     if (!searchQuery.trim()) return;
     
     // Use cached extractor if available, otherwise create new one
-    const extractor = extractorRef.current || new TechnicalExtractor(pdfText);
+    const extractor = extractorRef.current || new TechnicalExtractor(pdfPages.length > 0 ? pdfPages : pdfText);
     const results = extractor.searchComponent(searchQuery);
     setSearchResults(results);
-  }, [searchQuery, pdfText]);
+  }, [searchQuery, pdfText, pdfPages]);
   
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -360,6 +400,7 @@ export default function TechnicalDatabaseTab({
   
   const handleDelete = () => {
     setPdfText("");
+    setPdfPages([]);
     setPdfName("");
     setDatabase(null);
     setSearchResults([]);
@@ -403,6 +444,15 @@ export default function TechnicalDatabaseTab({
             >
               <Zap className="w-4 h-4" />
               Construir Base Técnica
+            </button>
+          )}
+          {database && (
+            <button
+              onClick={handleSyncToSpecs}
+              className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:brightness-110 text-white font-display text-sm font-bold px-4 py-2.5 flex items-center justify-center gap-2 transition-transform active:scale-[0.98] cursor-pointer shadow-[0_4px_15px_rgba(6,182,212,0.3)] rounded-xl uppercase tracking-tighter"
+            >
+              <Link2 className="w-4 h-4" />
+              Sincronizar ficha
             </button>
           )}
           <button

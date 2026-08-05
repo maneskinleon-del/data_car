@@ -3,6 +3,14 @@
 // ============================================================================
 // Pipeline: normalize → segment → extract → validate → build database
 // ============================================================================
+// v2 — Cobertura honesta:
+//   • Cada candidato trackea página real + sección del manual (procedencia).
+//   • La confianza parte en 0 y suma solo por evidencia real (unidad, cercanía
+//     a la keyword, sección correcta, formato de especificación).
+//   • Se descartan matches sin keyword cerca (falsos positivos tipo "Sensor",
+//     "pad", "disco" con valores lejanos).
+//   • La cobertura solo cuenta reglas con datos realmente llenados.
+// ============================================================================
 
 import {
   VehicleTechnicalDatabase,
@@ -14,6 +22,11 @@ import {
   SystemCategory,
   MaintenanceItem,
 } from "../types/technical";
+
+// ── Umbrales de confianza ────────────────────────────────────────────────────
+const MIN_CANDIDATE_CONFIDENCE = 0.3; // para aparecer en la lista de candidatos
+const MIN_FILL_CONFIDENCE = 0.5; // para llenar un dato de la base
+const MAX_KEYWORD_DISTANCE = 180; // distancia máxima keyword → valor (chars)
 
 // ── Normalización de texto ───────────────────────────────────────────────────
 export function normalizeText(text: string): string {
@@ -30,55 +43,55 @@ export function normalizeText(text: string): string {
 interface TextSection {
   title: string;
   content: string;
+  start: number; // offset del título en el texto normalizado
   pageStart?: number;
+}
+
+// Una línea es título de sección solo si: empieza con la keyword, es corta y
+// NO parece una línea de datos (sin dos puntos, sin valores). Esto evita que
+// "Engine oil:", "Capacity: 4.2 L" o "Oil filter: MAHLE..." se traten como
+// secciones solo por empezar con ENGINE/CAPACITY/OIL.
+const SECTION_KEYWORD_RE = /^(?:specifications?|especificaciones|engine|motor|mec[áa]nica|lubrication|lubricaci[oó]n|aceite|oil|cooling|refrigeraci[oó]n|refrigerante|coolant|ignition|encendido|spark\s*plug|chispa|fuel|combustible|brake|frenos|suspension|suspensi[oó]n|transmission|transmisi[oó]n|electrical|el[ée]ctrico|maintenance|mantenimiento|service|capacity|capacidad|fluid)/i;
+
+function isSectionTitleLine(line: string): boolean {
+  const t = line.trim();
+  // Título real: corto (≤ 60 chars), sin dos puntos, sin dígitos de valores sueltos
+  // (ej: "OIL 5W-30" es contenido, no un título de sección)
+  if (t.length === 0 || t.length > 60) return false;
+  if (t.includes(":")) return false;
+  if (/\d/.test(t)) return false;
+  SECTION_KEYWORD_RE.lastIndex = 0;
+  return SECTION_KEYWORD_RE.test(t);
 }
 
 export function segmentBySections(text: string): TextSection[] {
   const sections: TextSection[] = [];
-  
-  // Patrones de secciones comunes en manuales de taller
-  const sectionPatterns = [
-    /(?:^|\n)(?:ENGINE|ENGINE MECHANICAL|Motor|MOTOR|Specifications|Especificaciones)/gi,
-    /(?:^|\n)(?:LUBRICATION|Lubricación|ACEITE|OIL)/gi,
-    /(?:^|\n)(?:COOLING|Refrigeración|REFRIGERACIÓN|COOLANT)/gi,
-    /(?:^|\n)(?:IGNITION|Encendido|ENCENDIDO|SPARK PLUG|CHISPA)/gi,
-    /(?:^|\n)(?:FUEL|Combustible|COMBUSTIBLE|FUEL SYSTEM)/gi,
-    /(?:^|\n)(?:BRAKE|Frenos|FRENOS|BRAKE SYSTEM)/gi,
-    /(?:^|\n)(?:SUSPENSION|Suspensión|SUSPENSIÓN)/gi,
-    /(?:^|\n)(?:TRANSMISSION|Transmisión|TRANSMISIÓN|MANUAL TRANSMISSION)/gi,
-    /(?:^|\n)(?:ELECTRICAL|Eléctrico|ELÉCTRICO|ELECTRICAL SYSTEM)/gi,
-    /(?:^|\n)(?:MAINTENANCE|Mantenimiento|MANTENIMIENTO|SERVICE)/gi,
-    /(?:^|\n)(?:CAPACITY|Capacidad|CAPACIDAD|FLUID)/gi,
-  ];
-  
+
   // Dividir por líneas y buscar inicio de secciones
   const lines = text.split("\n");
-  let currentSection: TextSection = { title: "General", content: "" };
-  
+  let currentSection: TextSection = { title: "General", content: "", start: 0 };
+  let offset = 0;
+
   for (const line of lines) {
-    let isSectionStart = false;
-    for (const pattern of sectionPatterns) {
-      pattern.lastIndex = 0;
-      if (pattern.test(line.trim())) {
-        // Guardar sección anterior
-        if (currentSection.content.trim()) {
-          sections.push(currentSection);
-        }
-        currentSection = { title: line.trim(), content: "" };
-        isSectionStart = true;
-        break;
+    const isSectionStart = isSectionTitleLine(line);
+
+    if (isSectionStart) {
+      // Guardar sección anterior
+      if (currentSection.content.trim()) {
+        sections.push(currentSection);
       }
-    }
-    if (!isSectionStart) {
+      currentSection = { title: line.trim(), content: "", start: offset };
+    } else {
       currentSection.content += line + "\n";
     }
+    offset += line.length + 1;
   }
-  
+
   // Última sección
   if (currentSection.content.trim()) {
     sections.push(currentSection);
   }
-  
+
   return sections;
 }
 
@@ -91,7 +104,7 @@ const EXTRACTION_RULES: ExtractionRule[] = [
     componentName: "Aceite de Motor",
     icon: "🛢️",
     sectionKeywords: [/aceite|oil|lubricación|lubrication/i],
-    fieldKeywords: [/aceite\s+(del\s+)?motor/i, /motor\s+oil/i],
+    fieldKeywords: [/aceite\s+(del\s+)?motor/i, /motor\s+oil/i, /engine\s+oil/i],
     valuePatterns: [
       { pattern: /(\d+[.,]?\d*)\s*[Ll]/, groupName: "capacity" },
       { pattern: /(5W-?\d{2}|10W-?\d{2}|0W-?\d{2}|SAE\s*\d+)/, groupName: "viscosity" },
@@ -155,7 +168,7 @@ const EXTRACTION_RULES: ExtractionRule[] = [
     unitHint: "capacidad + octanaje",
     required: true,
   },
-  
+
   // ── ENCENDIDO ──
   {
     id: "spark_plug",
@@ -172,7 +185,7 @@ const EXTRACTION_RULES: ExtractionRule[] = [
     unitHint: "marca + tipo + gap",
     required: true,
   },
-  
+
   // ── FILTROS ──
   {
     id: "oil_filter",
@@ -200,7 +213,7 @@ const EXTRACTION_RULES: ExtractionRule[] = [
     unitHint: "referencia/código",
     required: false,
   },
-  
+
   // ── FRENOS ──
   {
     id: "brake_disc_front",
@@ -208,7 +221,7 @@ const EXTRACTION_RULES: ExtractionRule[] = [
     componentName: "Disco Delantero",
     icon: "🛑",
     sectionKeywords: [/frenos|brake/i],
-    fieldKeywords: [/disco\s+(delantero|frontal|front)/i],
+    fieldKeywords: [/disco\s+(delantero|frontal|front)/i, /front\s+disc/i],
     valuePatterns: [
       { pattern: /(\d{1,2}[.,]?\d*)\s*mm/, groupName: "thickness" },
     ],
@@ -260,7 +273,7 @@ const EXTRACTION_RULES: ExtractionRule[] = [
     componentName: "Presión de Neumáticos",
     icon: "🛞",
     sectionKeywords: [/neumático|tire|rueda/i],
-    fieldKeywords: [/presi[oó]n\s+de\s+(los\s+)?neum[aá]ticos/i],
+    fieldKeywords: [/presi[oó]n\s+de\s+(los\s+)?neum[aá]ticos/i, /tire\s+pressure/i],
     valuePatterns: [
       { pattern: /(\d{2})\s*[-–/]?\s*(\d{2})?\s*(psi|PSI)/, groupName: "pressure" },
     ],
@@ -280,7 +293,7 @@ const EXTRACTION_RULES: ExtractionRule[] = [
     unitHint: "ej: 205/55 R16",
     required: false,
   },
-  
+
   // ── MOTOR ──
   {
     id: "compression",
@@ -323,67 +336,186 @@ const EXTRACTION_RULES: ExtractionRule[] = [
   },
 ];
 
+// Conteo de reglas por sistema (para cobertura por sistema en la UI)
+export const SYSTEM_RULE_COUNTS: Record<SystemCategory, number> = (() => {
+  const counts = {} as Record<SystemCategory, number>;
+  for (const rule of EXTRACTION_RULES) {
+    counts[rule.system] = (counts[rule.system] || 0) + 1;
+  }
+  return counts;
+})();
+
+// Cantidad de campos con dato llenado en un componente
+export function countFilledFields(component: Component): number {
+  const fields: (DataPoint<unknown> | undefined)[] = [
+    component.specification,
+    component.capacity,
+    component.viscosity,
+    component.grade,
+    component.gap,
+    component.torque,
+    component.pressure,
+    component.temperature,
+    component.thickness,
+    component.interval,
+    component.partNumber,
+    component.position,
+    component.quantity,
+    component.engine,
+    component.year,
+  ];
+  return fields.filter((f) => f !== undefined).length;
+}
+
 // ── Motor de extracción ──────────────────────────────────────────────────────
 export class TechnicalExtractor {
   private text: string;
   private sections: TextSection[];
-  
-  constructor(pdfText: string) {
-    this.text = normalizeText(pdfText);
+  private pageStarts: number[] = []; // offset inicial de cada página en this.text
+  private cachedDb: VehicleTechnicalDatabase | null = null;
+
+  constructor(pdfPages: string[] | string) {
+    if (typeof pdfPages === "string") {
+      // Compat: texto plano sin páginas conocidas
+      this.text = normalizeText(pdfPages);
+      this.pageStarts = [0];
+    } else {
+      // Normalizar por página y concatenar conservando los límites
+      const normalized = pdfPages.map((p) => normalizeText(p));
+      const parts: string[] = [];
+      let offset = 0;
+      normalized.forEach((page, i) => {
+        this.pageStarts.push(offset);
+        parts.push(page);
+        offset += page.length;
+        if (i < normalized.length - 1) {
+          parts.push("\n");
+          offset += 1;
+        }
+      });
+      this.text = parts.join("");
+    }
     this.sections = segmentBySections(this.text);
   }
-  
-  // Buscar en contexto: keyword → ventana → valor
+
+  // Página (1-based) a la que pertenece un offset del texto normalizado
+  private pageForOffset(offset: number): number | undefined {
+    if (this.pageStarts.length <= 1) return undefined;
+    let page = this.pageStarts.length;
+    for (let i = 0; i < this.pageStarts.length; i++) {
+      if (this.pageStarts[i] > offset) {
+        page = i; // page i empieza después del offset → pertenece a i-1 (1-based: i)
+        break;
+      }
+    }
+    return page;
+  }
+
+  // Título de sección al que pertenece un offset
+  private sectionForOffset(offset: number): string {
+    let title = "General";
+    for (const s of this.sections) {
+      if (s.start <= offset) title = s.title;
+      else break;
+    }
+    return title;
+  }
+
+  // Encontrar el match más cercano a la keyword dentro de la ventana
+  private findClosestMatch(
+    window: string,
+    pattern: RegExp,
+    keywordPos: number
+  ): { match: RegExpExecArray; distance: number } | null {
+    const flags = pattern.flags.includes("g") ? pattern.flags : pattern.flags + "g";
+    const re = new RegExp(pattern.source, flags);
+    let m: RegExpExecArray | null;
+    let best: { match: RegExpExecArray; distance: number } | null = null;
+
+    while ((m = re.exec(window)) !== null) {
+      const distance = Math.abs(m.index - keywordPos);
+      if (!best || distance < best.distance) {
+        best = { match: m, distance };
+      }
+      if (re.lastIndex === m.index) re.lastIndex++;
+    }
+    return best;
+  }
+
+  // Buscar en contexto: keyword → ventana → valor más cercano
   findCandidates(
     rule: ExtractionRule,
     maxResults = 4
   ): ExtractionResult[] {
     const results: ExtractionResult[] = [];
-    
+
     for (const valuePattern of rule.valuePatterns) {
       const candidates: CandidateValue[] = [];
       const seen = new Set<string>();
-      
+
       // Buscar keyword en todo el texto
       for (const keyword of rule.fieldKeywords) {
-        const flags = keyword.flags.includes("g") 
-          ? keyword.flags 
+        const flags = keyword.flags.includes("g")
+          ? keyword.flags
           : keyword.flags + "g";
         const keywordRe = new RegExp(keyword.source, flags);
         let match: RegExpExecArray | null;
-        
+
         while ((match = keywordRe.exec(this.text)) !== null) {
           // Ventana de contexto: ±200 caracteres
           const start = Math.max(0, match.index - 200);
           const end = Math.min(this.text.length, match.index + match[0].length + 300);
           const window = this.text.slice(start, end);
-          
-          // Buscar patrón de valor en la ventana
-          const valueMatch = window.match(valuePattern.pattern);
-          if (valueMatch) {
-            const raw = valueMatch[0].trim();
+
+          // Posición de la keyword dentro de la ventana
+          const keywordPos = match.index - start + match[0].length;
+          const closest = this.findClosestMatch(window, valuePattern.pattern, keywordPos);
+
+          if (closest && closest.distance <= MAX_KEYWORD_DISTANCE) {
+            const raw = closest.match[0].trim();
             const key = raw.toLowerCase();
-            
-            if (raw && !seen.has(key)) {
-              seen.add(key);
-              candidates.push({
-                value: valuePattern.transform 
-                  ? valuePattern.transform(raw) 
-                  : raw,
-                context: window.replace(/\s+/g, " ").trim().substring(0, 200),
-                confidence: this.calculateConfidence(raw, window),
-                rawText: raw,
-              });
+
+            if (raw) {
+              const fullMatchIndex = start + closest.match.index;
+              const page = this.pageForOffset(match.index);
+              const section = this.sectionForOffset(match.index);
+              const confidence = this.calculateConfidence(
+                raw,
+                window,
+                rule,
+                closest.distance,
+                section
+              );
+
+              // Solo se deduplica si el candidato es realmente válido: una
+              // ocurrencia de baja confianza no debe bloquear una posterior
+              // de alta confianza con el mismo valor.
+              if (confidence >= MIN_CANDIDATE_CONFIDENCE && !seen.has(key)) {
+                seen.add(key);
+                candidates.push({
+                  value: valuePattern.transform
+                    ? valuePattern.transform(raw)
+                    : raw,
+                  context: window.replace(/\s+/g, " ").trim().substring(0, 200),
+                  page,
+                  section,
+                  confidence,
+                  rawText: raw,
+                });
+              }
             }
           }
-          
+
           if (candidates.length >= maxResults) break;
           if (keywordRe.lastIndex === match.index) keywordRe.lastIndex++;
         }
-        
+
         if (candidates.length >= maxResults) break;
       }
-      
+
+      // Ordenar por confianza desc (el mejor candidato primero)
+      candidates.sort((a, b) => b.confidence - a.confidence);
+
       if (candidates.length > 0) {
         results.push({
           componentId: rule.id,
@@ -392,34 +524,70 @@ export class TechnicalExtractor {
         });
       }
     }
-    
+
     return results;
   }
-  
-  // Calcular confianza basada en contexto
-  private calculateConfidence(value: string, context: string): number {
-    let confidence = 0.5;
-    
-    // Si hay unidad de medida, +0.2
-    if (/\d+\s*(mm|nm|psi|kpa|bar|l|kg|°c)/i.test(value)) {
+
+  // Calcular confianza basada en evidencia real (parte en 0)
+  private calculateConfidence(
+    value: string,
+    window: string,
+    rule: ExtractionRule,
+    distance: number,
+    sectionTitle: string
+  ): number {
+    let confidence = 0;
+
+    // Unidad de medida presente → fuerte señal
+    if (/\d+\s*(mm|nm|psi|kpa|bar|l|kg|°c|°f|ron)/i.test(value)) {
+      confidence += 0.3;
+    }
+
+    // Cercanía a la keyword
+    if (distance <= 60) confidence += 0.25;
+    else if (distance <= 120) confidence += 0.15;
+    else if (distance <= MAX_KEYWORD_DISTANCE) confidence += 0.1;
+
+    // La sección donde apareció coincide con las keywords de la regla
+    for (const sk of rule.sectionKeywords) {
+      sk.lastIndex = 0;
+      if (sk.test(sectionTitle)) {
+        confidence += 0.2;
+        break;
+      }
+    }
+
+    // Formato típico de especificación (número + unidad letra)
+    if (/^\d+[.,]?\d*\s*[A-Za-z]/.test(value)) {
+      confidence += 0.15;
+    }
+
+    // Formato de referencia de pieza (letras + separador + dígitos, ej: OC-1234)
+    if (/^[A-Z]{1,5}[-\s]?\d{3,6}$/i.test(value)) {
       confidence += 0.2;
     }
-    
-    // Si está cerca de la keyword, +0.1
-    if (context.length < 200) {
-      confidence += 0.1;
+
+    // Formato de medida de neumático (ej: 205/55 R16) — inconfundible
+    if (/^\d{3}\/\d{2}\s*R\d{2}$/i.test(value)) {
+      confidence += 0.35;
     }
-    
-    // Si tiene formato típico de especificación, +0.1
-    if (/\d+[.,]?\d*\s*[A-Z]/.test(value)) {
-      confidence += 0.1;
+
+    // La keyword del campo aparece en la ventana de contexto
+    for (const fk of rule.fieldKeywords) {
+      fk.lastIndex = 0;
+      if (fk.test(window)) {
+        confidence += 0.1;
+        break;
+      }
     }
-    
+
     return Math.min(confidence, 1);
   }
-  
+
   // Construir base técnica completa
   buildDatabase(): VehicleTechnicalDatabase {
+    if (this.cachedDb) return this.cachedDb;
+
     const components: Record<SystemCategory, Component[]> = {
       motor: [],
       fluidos: [],
@@ -432,11 +600,11 @@ export class TechnicalExtractor {
       neumaticos: [],
       carroceria: [],
     };
-    
+
     // Extraer componentes según reglas
     for (const rule of EXTRACTION_RULES) {
       const results = this.findCandidates(rule);
-      
+
       if (results.length > 0) {
         const component: Component = {
           id: rule.id,
@@ -446,23 +614,29 @@ export class TechnicalExtractor {
           lastUpdated: new Date().toISOString(),
           verified: false,
         };
-        
-        // Asignar valores a campos del componente
+
+        // Asignar valores a campos del componente (solo confianza ≥ umbral)
         for (const result of results) {
           const bestCandidate = result.candidates[0];
-          if (bestCandidate) {
+          if (bestCandidate && bestCandidate.confidence >= MIN_FILL_CONFIDENCE) {
             const dataPoint: DataPoint<string> = {
               value: bestCandidate.value,
               source: "manual",
+              page: bestCandidate.page,
+              section: bestCandidate.section,
               confidence: bestCandidate.confidence,
               rawText: bestCandidate.rawText,
             };
-            
+
             switch (result.field) {
               case "capacity": component.capacity = dataPoint; break;
               case "viscosity": component.viscosity = dataPoint; break;
               case "grade": component.grade = dataPoint; break;
-              case "type": component.specification = dataPoint; break;
+              case "type":
+                // "brand" y "type" comparten specification: la marca (referencia
+                // OEM) tiene prioridad sobre el material/tipo (ej: NGK BKR6E > iridium)
+                if (!component.specification) component.specification = dataPoint;
+                break;
               case "gap": component.gap = dataPoint; break;
               case "torque": component.torque = dataPoint; break;
               case "thickness": component.thickness = dataPoint; break;
@@ -476,23 +650,27 @@ export class TechnicalExtractor {
             }
           }
         }
-        
-        components[rule.system].push(component);
+
+        // Solo se agrega el componente si logró llenar al menos un dato
+        if (countFilledFields(component) > 0) {
+          components[rule.system].push(component);
+        }
       }
     }
-    
-    // Calcular cobertura
-    const totalRequired = EXTRACTION_RULES.filter(r => r.required).length;
-    const filledRequired = Object.values(components)
-      .flat()
-      .filter(c => EXTRACTION_RULES.find(r => r.id === c.id)?.required && c.specification)
-      .length;
-    
-    const coveragePercent = totalRequired > 0 
-      ? Math.round((filledRequired / totalRequired) * 100) 
-      : 0;
-    
-    return {
+
+    // Cobertura honesta: reglas requeridas con ≥1 dato llenado de verdad
+    const requiredRules = EXTRACTION_RULES.filter((r) => r.required);
+    const filledRequired = requiredRules.filter((rule) => {
+      const comp = components[rule.system].find((c) => c.id === rule.id);
+      return comp !== undefined && countFilledFields(comp) > 0;
+    }).length;
+
+    const coveragePercent =
+      requiredRules.length > 0
+        ? Math.round((filledRequired / requiredRules.length) * 100)
+        : 0;
+
+    const db: VehicleTechnicalDatabase = {
       vehicle: {
         brand: { value: "MG", source: "reference", confidence: 1 },
         model: { value: "350", source: "reference", confidence: 1 },
@@ -504,38 +682,28 @@ export class TechnicalExtractor {
       extractionSource: "",
       coveragePercent,
     };
+
+    this.cachedDb = db;
+    return db;
   }
-  
-  // Buscar componente por nombre
+
+  // Buscar componente por nombre (usa la base cacheada)
   searchComponent(query: string): Component[] {
+    const db = this.buildDatabase();
     const results: Component[] = [];
     const queryLower = query.toLowerCase();
-    
-    for (const components of Object.values(this.findComponentsByQuery(queryLower))) {
-      results.push(...components);
-    }
-    
-    return results;
-  }
-  
-  private findComponentsByQuery(query: string): Record<SystemCategory, Component[]> {
-    const db = this.buildDatabase();
-    const results: Record<SystemCategory, Component[]> = {
-      motor: [], fluidos: [], encendido: [], filtros: [], frenos: [],
-      suspension: [], transmision: [], electrico: [], neumaticos: [], carroceria: [],
-    };
-    
-    for (const [system, components] of Object.entries(db.components) as [SystemCategory, Component[]][]) {
+
+    for (const components of Object.values(db.components)) {
       for (const comp of components) {
         if (
-          comp.name.toLowerCase().includes(query) ||
-          comp.id.toLowerCase().includes(query)
+          comp.name.toLowerCase().includes(queryLower) ||
+          comp.id.toLowerCase().includes(queryLower)
         ) {
-          results[system].push(comp);
+          results.push(comp);
         }
       }
     }
-    
+
     return results;
   }
 }

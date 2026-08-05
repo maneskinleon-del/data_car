@@ -1,5 +1,5 @@
 import React from "react";
-import { Droplets, Sliders, Lightbulb, Save } from "lucide-react";
+import { Droplets, Sliders, Zap, Save } from "lucide-react";
 import { VehicleSpecs } from "../types";
 
 interface SpecFormProps {
@@ -55,6 +55,18 @@ export default function SpecForm({ specs, onUpdateSpecs, onSave, isSaving }: Spe
                 placeholder="p. ej. Filtro Aceite UJ-1797"
               />
             </div>
+            <div>
+              <label className="block font-mono text-[9px] text-white/50 uppercase font-bold tracking-widest mb-1.5">
+                ACEITE CAJA
+              </label>
+              <input
+                type="text"
+                value={specs.aceiteCaja}
+                onChange={(e) => handleChange("aceiteCaja", e.target.value)}
+                className="w-full input-field p-3 font-mono text-xs text-white rounded bg-black outline-none border border-white/10"
+                placeholder="p. ej. GL-4 75W-90"
+              />
+            </div>
           </div>
         </div>
 
@@ -97,29 +109,65 @@ export default function SpecForm({ specs, onUpdateSpecs, onSave, isSaving }: Spe
           </div>
         </div>
 
-        {/* Unit 3: Electronics & Lighting */}
+        {/* Unit 3: Fluids & Ignition */}
         <div className="glass-panel p-6 rounded-xl border border-white/10 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-[#FF3D00]/5 to-transparent pointer-events-none" />
           <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
-            <Lightbulb className="w-5 h-5 text-[#FF3D00]" />
+            <Zap className="w-5 h-5 text-[#FF3D00]" />
             <h3 className="font-display text-xs text-[#FF3D00] font-black tracking-widest uppercase">
-              ELECTRÓNICA & LUZ
+              SISTEMAS Y LÍQUIDOS
             </h3>
           </div>
           <div className="space-y-4">
             <div>
               <label className="block font-mono text-[9px] text-white/50 uppercase font-bold tracking-widest mb-1.5">
-                ILUMINACIÓN PRINCIPAL
+                REFRIGERANTE
               </label>
               <input
                 type="text"
-                value={specs.iluminacionPrincipal}
-                onChange={(e) => handleChange("iluminacionPrincipal", e.target.value)}
+                value={specs.refrigerante}
+                onChange={(e) => handleChange("refrigerante", e.target.value)}
                 className="w-full input-field p-3 font-mono text-xs text-white rounded bg-black outline-none border border-white/10"
-                placeholder="p. ej. LED H4"
+                placeholder="p. ej. OAT 6.0 L"
+              />
+            </div>
+            <div>
+              <label className="block font-mono text-[9px] text-white/50 uppercase font-bold tracking-widest mb-1.5">
+                LÍQUIDO FRENOS
+              </label>
+              <input
+                type="text"
+                value={specs.liquidoFrenos}
+                onChange={(e) => handleChange("liquidoFrenos", e.target.value)}
+                className="w-full input-field p-3 font-mono text-xs text-white rounded bg-black outline-none border border-white/10"
+                placeholder="p. ej. DOT 4"
+              />
+            </div>
+            <div>
+              <label className="block font-mono text-[9px] text-white/50 uppercase font-bold tracking-widest mb-1.5">
+                BUJÍAS
+              </label>
+              <input
+                type="text"
+                value={specs.bujias}
+                onChange={(e) => handleChange("bujias", e.target.value)}
+                className="w-full input-field p-3 font-mono text-xs text-white rounded bg-black outline-none border border-white/10"
+                placeholder="p. ej. NGK BKR6E · gap 0.8 mm"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block font-mono text-[9px] text-white/50 uppercase font-bold tracking-widest mb-1.5">
+                  ILUMINACIÓN PRINCIPAL
+                </label>
+                <input
+                  type="text"
+                  value={specs.iluminacionPrincipal}
+                  onChange={(e) => handleChange("iluminacionPrincipal", e.target.value)}
+                  className="w-full input-field p-3 font-mono text-xs text-white rounded bg-black outline-none border border-white/10"
+                  placeholder="p. ej. LED H4"
+                />
+              </div>
               <div>
                 <label className="block font-mono text-[9px] text-white/50 uppercase font-bold tracking-widest mb-1.5">
                   PLUMILLA
@@ -130,18 +178,6 @@ export default function SpecForm({ specs, onUpdateSpecs, onSave, isSaving }: Spe
                   onChange={(e) => handleChange("plumillaL", e.target.value)}
                   className="w-full input-field p-3 font-mono text-xs text-white rounded bg-black outline-none border border-white/10 resize-none leading-normal"
                   placeholder='23"'
-                />
-              </div>
-              <div>
-                <label className="block font-mono text-[9px] text-white/50 uppercase font-bold tracking-widest mb-1.5">
-                  ALFOMBRA
-                </label>
-                <textarea
-                  rows={2}
-                  value={specs.alfombra}
-                  onChange={(e) => handleChange("alfombra", e.target.value)}
-                  className="w-full input-field p-3 font-mono text-xs text-white rounded bg-black outline-none border border-white/10 resize-none leading-normal"
-                  placeholder="Medidas"
                 />
               </div>
             </div>

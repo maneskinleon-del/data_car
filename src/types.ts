@@ -9,7 +9,6 @@ export interface VehicleSpecs {
   dimensionNeumaticos: string;
   iluminacionPrincipal: string;
   plumillaL: string;
-  alfombra: string;
   filtroAire: string;
   ultimoCambioKm: number;
   // === Datos del Manual (extraídos o ingresados por el usuario) ===
