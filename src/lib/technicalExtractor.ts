@@ -40,6 +40,9 @@ export function normalizeText(text: string): string {
     .replace(/û/g, "ó")
     .replace(/Ï/g, "í")
     .replace(/ï(?=[a-z])/g, "í")
+    // Corrupción del text-layer: "·" (punto medio) reemplaza acentos "á"
+    // (v·lvula→válvula, m·ximo→máximo, autom·tica→automática)
+    .replace(/·/g, "á")
     .replace(/[ \t]+/g, " ")
     .replace(/\n{3,}/g, "\n\n");
 }
