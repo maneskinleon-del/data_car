@@ -1,6 +1,5 @@
 import React, { useState, useRef, useCallback } from "react";
 import {
-  BookOpen,
   Upload,
   Search,
   FileText,
@@ -11,15 +10,21 @@ import {
   ChevronUp,
   Trash2,
   Zap,
+  Gauge,
+  Droplets,
+  Zap as ZapIcon,
+  Disc,
+  Wrench,
+  AlertTriangle,
 } from "lucide-react";
 import * as pdfjsLib from "pdfjs-dist";
 import { VehicleSpecs } from "../types";
 
-// Configure PDF.js worker - use unpkg (cdnjs doesn't have v6.x)
+// Configure PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = 
   `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
-const MAX_PDF_SIZE = 50 * 1024 * 1024; // 50MB limit
+const MAX_PDF_SIZE = 50 * 1024 * 1024;
 
 interface ManualDataTabProps {
   specs: VehicleSpecs;
@@ -27,57 +32,45 @@ interface ManualDataTabProps {
   triggerToast: (msg: string) => void;
 }
 
-// Fields that can be extracted from the manual
 interface ManualField {
   key: keyof VehicleSpecs;
   label: string;
   icon: string;
   placeholder: string;
-  patterns: RegExp[]; // Auto-detection patterns
+  patterns: RegExp[];
+  category: "motor" | "fluidos" | "encendido" | "frenos" | "mantencion" | "diagnostico";
 }
 
-// Patterns optimized for MG 350 manual content
+// MG 350 specific fields based on real manual data
 const MANUAL_FIELDS: ManualField[] = [
+  // === MOTOR ===
   {
     key: "aceiteMotor",
     label: "Aceite de Motor",
     icon: "🛢️",
-    placeholder: "p. ej. SAE 5W-30 API SN Plus",
+    placeholder: "4.0L SAE 5W-30 / 10W-40",
+    category: "motor",
     patterns: [
-      /aceite\s+(?:de\s+)?motor[:\s]+([^\n.]{3,80})/i,
-      /motor\s+(?:oil|aceite)[:\s]+([^\n.]{3,80})/i,
-      /SAE\s+\d+[WR]-\d+/i,
-      /API\s+[SLSPSN]+\s*(?:Plus|CF)?/i,
-      /oil\s+(?:type|spec|grade|capacity)[:\s]+([^\n.]{3,80})/i,
-      /capacidad\s+(?:de\s+)?(?:aceite|oil)[:\s]+([^\n.]{3,40})/i,
-      /\d+\.?\d*\s*(?:L|litros?)\s*(?:de\s+)?aceite/i,
-    ],
-  },
-  {
-    key: "aceiteCaja",
-    label: "Aceite de Caja / Transmisión",
-    icon: "⚙️",
-    placeholder: "p. ej. SAE 75W-90 GL-4",
-    patterns: [
-      /aceite\s+(?:de\s+)?(?:caja|transmisi[oó]n)[:\s]+([^\n.]{3,80})/i,
-      /transmisi[oó]n\s+(?:fluid|oil|aceite)[:\s]+([^\n.]{3,80})/i,
-      /de\s+transmisi[oó]n\s*(?:\(\d+\))?/i,
-      /GL-[345]\s*/i,
-      /caja\s+(?:de\s+)?cambios[:\s]+([^\n.]{3,80})/i,
+      /c[aá]rter\s+de\s+aceite[:\s]+([^\n.]{3,60})/i,
+      /aceite\s+(?:de\s+)?motor[:\s]+([^\n.]{3,60})/i,
+      /(\d+\.?\d*)\s*L\s+SAE\s+\d+[WR]-\d+/i,
+      /SAE\s+5W-30/i,
+      /SAE\s+10W-40/i,
+      /capacidad\s+(?:de\s+)?aceite[:\s]+([^\n.]{3,40})/i,
     ],
   },
   {
     key: "bujias",
     label: "Bujías",
     icon: "⚡",
-    placeholder: "p. ej. NGK BPR6ES, gap 0.8mm",
+    placeholder: "Iridio/Platino, calibre 0.85 mm",
+    category: "encendido",
     patterns: [
-      /buj[ií]as?[:\s]+([^\n.]{3,80})/i,
+      /buj[ií]as?\s+de\s+(?:iridio|platino)[:\s]+([^\n.]{3,60})/i,
+      /calibre[:\s]+(\d+\.?\d*\s*mm)/i,
+      /buj[ií]as?[:\s]+([^\n.]{3,60})/i,
       /NGK\s+[A-Z0-9]{2,10}/i,
-      /DENSO\s+[A-Z0-9]{2,10}/i,
-      /champion\s+[A-Z0-9]{2,10}/i,
-      /spark\s+plug[s]?[:\s]+([^\n.]{3,80})/i,
-      /brecha[:\s]+(\d+\.?\d*\s*(?:mm|pulgadas?)?)/i,
+      /spark\s+plug[:\s]+([^\n.]{3,60})/i,
       /gap[:\s]+(\d+\.?\d*\s*mm)/i,
     ],
   },
@@ -85,40 +78,38 @@ const MANUAL_FIELDS: ManualField[] = [
     key: "fusibles",
     label: "Fusibles",
     icon: "🔌",
-    placeholder: "p. ej. No.13 - Caja de fusibles del motor",
+    placeholder: "No.13 - Caja de fusibles del motor",
+    category: "diagnostico",
     patterns: [
       /fusible[s]?[:\s]+([^\n]{5,150})/i,
       /No\.\d+\s+(?:en\s+la\s+)?caja\s+de\s+fusibles/i,
-      /\d+[A]\s*\([^)]*\)/gi,
-      /fuse\s+(?:box|panel)[:\s]+([^\n]{5,150})/i,
       /caja\s+de\s+fusibles[:\s]+([^\n]{5,150})/i,
     ],
   },
   {
     key: "refrigerante",
-    label: "Refrigerante / Anticongelante",
+    label: "Refrigerante",
     icon: "❄️",
-    placeholder: "p. ej. Etilenglicol 50%",
+    placeholder: "6.5L orgánico OAT",
+    category: "fluidos",
     patterns: [
-      /refrigerante[:\s]+([^\n.]{3,80})/i,
-      /anticongelante[:\s]+([^\n.]{3,80})/i,
-      /coolant[:\s]+([^\n.]{3,80})/i,
-      /etilenglicol/i,
-      /vaciar\s+y\s+refill[:\s]*(\d+\.?\d*\s*(?:L|ml)?)/i,
-      /capacidad\s+(?:de\s+)?(?:refrigerante|coolant)[:\s]+([^\n.]{3,40})/i,
+      /refrigerante\s+(?:org[aá]nico\s+)?(?:OAT)?[:\s]+([^\n.]{3,60})/i,
+      /(\d+\.?\d*)\s*L\s+(?:de\s+)?(?:refrigerante|OAT)/i,
+      /coolant[:\s]+([^\n.]{3,60})/i,
+      /anticongelante[:\s]+([^\n.]{3,60})/i,
     ],
   },
   {
     key: "tipoCombustible",
-    label: "Tipo de Combustible",
+    label: "Combustible",
     icon: "⛽",
-    placeholder: "p. ej. Gasolina 95 octanos",
+    placeholder: "55L / 93 octanos",
+    category: "fluidos",
     patterns: [
-      /(?:gasolina|petrol|fuel|combustible)[:\s]+([^\n.]{3,60})/i,
-      /\d{2,3}\s*octanos?/i,
-      /RON\s*\d+/i,
-      /AKI\s*\d+/i,
-      /tipo\s+de\s+(?:combustible|gasolina)[:\s]+([^\n.]{3,60})/i,
+      /estanque\s+de\s+(?:bencina|gasolina)[:\s]+([^\n.]{3,60})/i,
+      /(\d+)\s*(?:litros?|L)\s*(?:de\s+)?(?:bencina|gasolina)/i,
+      /(\d+)\s+octanos?/i,
+      /RON\s*(\d+)/i,
       /capacidad\s+(?:del\s+)?(?:estanque|tanque)[:\s]+([^\n.]{3,40})/i,
     ],
   },
@@ -126,72 +117,198 @@ const MANUAL_FIELDS: ManualField[] = [
     key: "liquidoFrenos",
     label: "Líquido de Frenos",
     icon: "🛑",
-    placeholder: "p. ej. DOT 4",
+    placeholder: "DOT 4",
+    category: "frenos",
     patterns: [
       /l[ií]quido\s+de\s+frenos?[:\s]+([^\n.]{3,40})/i,
-      /brake\s+fluid[:\s]+([^\n.]{3,40})/i,
       /DOT\s*[3456]/i,
-      /frenos?[:\s]+([^\n.]{3,40})/i,
+      /brake\s+fluid[:\s]+([^\n.]{3,40})/i,
     ],
   },
   {
-    key: "correaDistribucion",
-    label: "Correa de Distribución",
-    icon: "🔄",
-    placeholder: "p. ej. Cambio cada 60,000 km",
+    key: "aceiteCaja",
+    label: "Aceite de Transmisión",
+    icon: "⚙️",
+    placeholder: "2.1L GL-4 75W-90",
+    category: "fluidos",
     patterns: [
-      /correa\s+(?:de\s+)?distribuci[oó]n[:\s]+([^\n.]{3,80})/i,
-      /timing\s+belt[:\s]+([^\n.]{3,80})/i,
-      /distribuci[oó]n[:\s]+([^\n.]{3,80})/i,
+      /transmisi[oó]n\s+manual[:\s]+([^\n.]{3,60})/i,
+      /(\d+\.?\d*)\s*L\s+GL-[345]\s+\d+[WR]-\d+/i,
+      /aceite\s+de\s+(?:caja|transmisi[oó]n)[:\s]+([^\n.]{3,60})/i,
+      /GL-[345]\s+\d+[WR]-\d+/i,
     ],
   },
   {
     key: "capacidadEstanque",
-    label: "Capacidad del Estanque",
+    label: "Capacidad Estanque",
     icon: "🪣",
-    placeholder: "p. ej. 55 L",
+    placeholder: "55 litros",
+    category: "fluidos",
     patterns: [
-      /capacidad\s+(?:del\s+)?(?:estanque|tanque|combustible)[:\s]+([^\n.]{3,40})/i,
-      /fuel\s+tank[:\s]+([^\n.]{3,40})/i,
-      /(\d+\.?\d*)\s*(?:L|litros?)\s*(?:de\s+)?(?:gasolina|combustible|estanque|tanque)/i,
-      /estanque[:\s]+(\d+\.?\d*\s*(?:L|litros?))/i,
+      /(\d+)\s*(?:litros?|L)\s*(?:de\s+)?(?:bencina|gasolina|estanque)/i,
+      /estanque[:\s]+(\d+\s*(?:litros?|L))/i,
+      /capacidad\s+(?:del\s+)?(?:estanque|tanque)[:\s]+(\d+\s*(?:litros?|L))/i,
     ],
   },
   {
     key: "torqueTornillos",
     label: "Torque de Tornillos",
     icon: "🔧",
-    placeholder: "p. ej. 5-7 Nm",
+    placeholder: "Rueda: 110-120 Nm",
+    category: "frenos",
     patterns: [
-      /torque[:\s]+([^\n.]{3,100})/i,
-      /apriete[:\s]+([^\n.]{3,100})/i,
-      /(\d+\.?\d*)\s*[-–]\s*(\d+\.?\d*)\s*N\.?m/gi,
-      /(\d+\.?\d*)\s*N\.?m/gi,
-      /perno[s]?\s*[:\-–]\s*([^\n.]{3,80})/i,
+      /par(?:es)?\s+de\s+apriete\s+de\s+rueda[:\s]+([^\n.]{3,40})/i,
+      /(\d+\.?\d*)\s*[-–]\s*(\d+\.?\d*)\s*N\.?m/i,
+      /apriete\s+de\s+rueda[:\s]+([^\n.]{3,40})/i,
+      /torque[:\s]+([^\n.]{3,80})/i,
     ],
   },
   {
     key: "peso",
     label: "Peso en Vacío",
     icon: "⚖️",
-    placeholder: "p. ej. 1,500 kg",
+    placeholder: "1,185 kg",
+    category: "motor",
     patterns: [
-      /peso\s+(?:en\s+)?(?:vac[ií]o|seco|bruto)[:\s]+([^\n.]{3,40})/i,
+      /peso\s+(?:en\s+)?(?:vac[ií]o|seco)[:\s]+([^\n.]{3,40})/i,
+      /(\d[\d,.]+)\s*kg/i,
       /curb\s+weight[:\s]+([^\n.]{3,40})/i,
-      /(\d[\d,.]*)\s*kg/i,
-      /peso[:\s]+(\d[\d,.]*\s*kg)/i,
     ],
   },
   {
     key: "dimensiones",
-    label: "Dimensiones (L x A x Al)",
+    label: "Dimensiones",
     icon: "📐",
-    placeholder: "p. ej. 4,510 x 1,780 x 1,490 mm",
+    placeholder: "Largo x Ancho x Alto",
+    category: "motor",
     patterns: [
       /dimensiones?[:\s]+([^\n.]{10,100})/i,
-      /largo\s*x\s*ancho/i,
       /(\d{4})\s*x\s*(\d{3,4})\s*x\s*(\d{3,4})\s*mm/i,
-      /las\s+dimensiones/i,
+    ],
+  },
+  // === CAMPOS NUEVOS ESPECÍFICOS MG 350 ===
+  {
+    key: "correaDistribucion",
+    label: "Distribución",
+    icon: "🔄",
+    placeholder: "Cadena metálica",
+    category: "mantencion",
+    patterns: [
+      /cadena\s+de\s+distribuci[oó]n\s+met[aá]lica/i,
+      /distribuci[oó]n[:\s]+([^\n.]{3,60})/i,
+      /timing\s+(?:belt|chain)[:\s]+([^\n.]{3,60})/i,
+    ],
+  },
+];
+
+// Additional informational fields (not in VehicleSpecs, displayed as reference)
+interface InfoField {
+  key: string;
+  label: string;
+  icon: string;
+  patterns: RegExp[];
+  category: "motor" | "fluidos" | "encendido" | "frenos" | "mantencion" | "diagnostico";
+}
+
+const INFO_FIELDS: InfoField[] = [
+  {
+    key: "presionCompresion",
+    label: "Presión de Compresión",
+    icon: "📊",
+    category: "motor",
+    patterns: [
+      /presi[oó]n\s+de\s+compresi[oó]n[:\s]+([^\n.]{3,60})/i,
+      /(\d+\.?\d*)\s*[-–]\s*(\d+\.?\d*)\s*psi/i,
+      /compresi[oó]n[:\s]+([^\n.]{3,60})/i,
+    ],
+  },
+  {
+    key: "presionAceite",
+    label: "Presión de Aceite",
+    icon: "🛢️",
+    category: "motor",
+    patterns: [
+      /presi[oó]n\s+de\s+aceite[:\s]+([^\n.]{3,60})/i,
+      /rango[s]?\s+de\s+presi[oó]n\s+de\s+aceite/i,
+    ],
+  },
+  {
+    key: "temperaturasCriticas",
+    label: "Temperaturas Críticas",
+    icon: "🌡️",
+    category: "motor",
+    patterns: [
+      /temperaturas?\s+cr[ií]tica[s]?[:\s]+([^\n.]{3,80})/i,
+      /termostato[:\s]+([^\n.]{3,40})/i,
+      /electroventilador[:\s]+([^\n.]{3,40})/i,
+    ],
+  },
+  {
+    key: "sensores",
+    label: "Sensores",
+    icon: "📡",
+    category: "encendido",
+    patterns: [
+      /sensores?\s+MAP[:\s]+([^\n.]{3,60})/i,
+      /sensor\s+IAT[:\s]+([^\n.]{3,60})/i,
+      /sondas?\s+Lambda[:\s]+([^\n.]{3,60})/i,
+      /sensor\s+CKP[:\s]+([^\n.]{3,60})/i,
+      /MAP\s*\/\s*IAT/i,
+    ],
+  },
+  {
+    key: "bobinas",
+    label: "Bobinas de Encendido",
+    icon: "⚡",
+    category: "encendido",
+    patterns: [
+      /bobinas?\s+independientes?\s*\(COP\)/i,
+      /COP\s*\(?\s*coil\s+on\s+plug\s*\)?/i,
+      /bobinas?[:\s]+([^\n.]{3,60})/i,
+    ],
+  },
+  {
+    key: "discosFrenos",
+    label: "Discos de Frenos",
+    icon: "🛑",
+    category: "frenos",
+    patterns: [
+      /discos?\s+delanteros?[:\s]*(\d+\.?\d*)\s*mm/i,
+      /discos?\s+traseros?[:\s]*(\d+\.?\d*)\s*mm/i,
+      /espesor(?:es)?\s+m[ií]nimo[s]?[:\s]+([^\n.]{3,60})/i,
+    ],
+  },
+  {
+    key: "pastillasFrenos",
+    label: "Pastillas de Frenos",
+    icon: "🛞",
+    category: "frenos",
+    patterns: [
+      /pastillas?[:\s]*(\d+\.?\d*)\s*mm/i,
+      /espesor\s+m[ií]nimo\s+de\s+pastillas/i,
+    ],
+  },
+  {
+    key: "presionNeumaticos",
+    label: "Presión de Neumáticos",
+    icon: "🛞",
+    category: "frenos",
+    patterns: [
+      /presi[oó]n\s+de\s+neum[aá]ticos?[:\s]+([^\n.]{3,40})/i,
+      /(\d+\.?\d*)\s*PSI/i,
+      /neum[aá]ticos?[:\s]+(\d+\.?\d*\s*PSI)/i,
+    ],
+  },
+  {
+    key: "codigosOBD2",
+    label: "Códigos OBD2 Frecuentes",
+    icon: "🔍",
+    category: "diagnostico",
+    patterns: [
+      /P0\d{3}\s*[-–]\s*P0\d{3}/gi,
+      /P0101|P0300|P0301|P0302|P0303|P0304|P0420/gi,
+      /c[oó]digos?\s+(?:frecuentes?|OBD)[:\s]+([^\n.]{3,100})/i,
+      /solucionario\s+r[aá]pido/i,
     ],
   },
 ];
@@ -201,6 +318,15 @@ function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
+
+const CATEGORY_LABELS: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
+  motor: { label: "Motor", icon: <Gauge className="w-4 h-4" />, color: "#FF3D00" },
+  fluidos: { label: "Fluidos y Capacidades", icon: <Droplets className="w-4 h-4" />, color: "#2196F3" },
+  encendido: { label: "Encendido y Sensores", icon: <ZapIcon className="w-4 h-4" />, color: "#FFC107" },
+  frenos: { label: "Frenos y Chasis", icon: <Disc className="w-4 h-4" />, color: "#F44336" },
+  mantencion: { label: "Mantenimiento", icon: <Wrench className="w-4 h-4" />, color: "#4CAF50" },
+  diagnostico: { label: "Diagnósticos OBD2", icon: <AlertTriangle className="w-4 h-4" />, color: "#9C27B0" },
+};
 
 export default function ManualDataTab({
   specs,
@@ -213,9 +339,10 @@ export default function ManualDataTab({
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<string[]>([]);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
-    new Set(["aceiteMotor"])
+    new Set(["motor"])
   );
   const [autoExtracted, setAutoExtracted] = useState<Set<string>>(new Set());
+  const [infoFields, setInfoFields] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Extract text from PDF
@@ -223,26 +350,23 @@ export default function ManualDataTab({
     async (file: File) => {
       setLoading(true);
       try {
-        // Check file size
         if (file.size > MAX_PDF_SIZE) {
           const sizeMB = (file.size / (1024 * 1024)).toFixed(0);
-          triggerToast(`El archivo pesa ${sizeMB}MB. El máximo recomendado es 50MB. Intenta comprimir el PDF.`);
+          triggerToast(`El archivo pesa ${sizeMB}MB. El máximo es 50MB.`);
           setLoading(false);
           return;
         }
 
         const arrayBuffer = await file.arrayBuffer();
         
-        // Load PDF with error handling
         let pdf;
         try {
           pdf = await pdfjsLib.getDocument({ data: arrayBuffer, verbosity: 0 }).promise;
         } catch (loadError: any) {
-          console.error("PDF load error:", loadError);
           if (loadError.message?.includes("Invalid PDF")) {
-            triggerToast("El archivo no es un PDF válido o está corrupto.");
+            triggerToast("El archivo no es un PDF válido.");
           } else if (loadError.message?.includes("password")) {
-            triggerToast("El PDF está protegido con contraseña. No se puede leer.");
+            triggerToast("El PDF está protegido con contraseña.");
           } else {
             triggerToast(`Error al abrir el PDF: ${loadError.message || "Formato no reconocido"}`);
           }
@@ -253,7 +377,6 @@ export default function ManualDataTab({
         let fullText = "";
         let totalPages = pdf.numPages;
         
-        // Process pages with individual error handling
         for (let i = 1; i <= totalPages; i++) {
           try {
             const page = await pdf.getPage(i);
@@ -262,22 +385,20 @@ export default function ManualDataTab({
             fullText += pageText + "\n";
           } catch (pageError) {
             console.warn(`Error en página ${i}:`, pageError);
-            // Continue with other pages
           }
         }
 
         if (fullText.trim().length === 0) {
-          triggerToast("El PDF no contiene texto extraíble. Puede ser un PDF escaneado (imágenes). Ingresa los datos manualmente.");
+          triggerToast("El PDF no contiene texto extraíble. Ingresa los datos manualmente.");
         } else {
-          triggerToast(`Manual "${file.name}" cargado. ${fullText.length.toLocaleString()} caracteres extraídos de ${totalPages} páginas.`);
+          triggerToast(`Manual cargado. ${fullText.length.toLocaleString()} caracteres de ${totalPages} páginas.`);
         }
 
         setPdfText(fullText);
         setPdfName(file.name);
         onUpdateSpecs({ manualPdfNombre: file.name });
       } catch (error: any) {
-        console.error("Error extracting PDF:", error);
-        triggerToast(`Error inesperado: ${error.message || "No se pudo procesar el PDF"}`);
+        triggerToast(`Error: ${error.message || "No se pudo procesar el PDF"}`);
       } finally {
         setLoading(false);
       }
@@ -285,7 +406,6 @@ export default function ManualDataTab({
     [onUpdateSpecs, triggerToast]
   );
 
-  // Handle file upload
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -294,7 +414,6 @@ export default function ManualDataTab({
       return;
     }
     extractTextFromPdf(file);
-    // Reset input so same file can be re-uploaded
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -307,13 +426,14 @@ export default function ManualDataTab({
 
     const extracted = new Set<string>();
     const updates: Partial<VehicleSpecs> = {};
+    const newInfoFields: Record<string, string> = {};
 
+    // Extract VehicleSpecs fields
     for (const field of MANUAL_FIELDS) {
       for (const pattern of field.patterns) {
         const match = pdfText.match(pattern);
         if (match) {
           const value = match[1] || match[0];
-          // Only update if the field is empty or user confirms
           if (!specs[field.key] || specs[field.key] === "") {
             (updates as any)[field.key] = value.trim();
             extracted.add(field.key);
@@ -323,18 +443,32 @@ export default function ManualDataTab({
       }
     }
 
-    if (Object.keys(updates).length > 0) {
-      onUpdateSpecs(updates);
+    // Extract informational fields
+    for (const field of INFO_FIELDS) {
+      for (const pattern of field.patterns) {
+        const match = pdfText.match(pattern);
+        if (match) {
+          const value = match[1] || match[0];
+          newInfoFields[field.key] = value.trim();
+          extracted.add(field.key);
+          break;
+        }
+      }
+    }
+
+    if (Object.keys(updates).length > 0 || Object.keys(newInfoFields).length > 0) {
+      if (Object.keys(updates).length > 0) {
+        onUpdateSpecs(updates);
+      }
+      setInfoFields((prev) => ({ ...prev, ...newInfoFields }));
       setAutoExtracted(extracted);
-      triggerToast(
-        `${Object.keys(updates).length} campo(s) detectado(s) automáticamente.`
-      );
+      const total = Object.keys(updates).length + Object.keys(newInfoFields).length;
+      triggerToast(`${total} campo(s) detectado(s) automáticamente.`);
     } else {
       triggerToast("No se detectaron nuevos campos. Puedes ingresarlos manualmente.");
     }
   };
 
-  // Search in PDF text
   const handleSearch = () => {
     if (!searchQuery.trim() || !pdfText) return;
 
@@ -348,10 +482,9 @@ export default function ManualDataTab({
       }
     }
 
-    setSearchResults(results.slice(0, 20)); // Limit to 20 results
+    setSearchResults(results.slice(0, 20));
   };
 
-  // Toggle section expansion
   const toggleSection = (key: string) => {
     setExpandedSections((prev) => {
       const next = new Set(prev);
@@ -364,14 +497,27 @@ export default function ManualDataTab({
     });
   };
 
-  // Delete stored manual PDF
   const handleDeleteManual = () => {
     setPdfText("");
     setPdfName("");
     onUpdateSpecs({ manualPdfNombre: "" });
     setAutoExtracted(new Set());
+    setInfoFields({});
     triggerToast("Manual eliminado.");
   };
+
+  // Group fields by category
+  const fieldsByCategory = MANUAL_FIELDS.reduce((acc, field) => {
+    if (!acc[field.category]) acc[field.category] = [];
+    acc[field.category].push(field);
+    return acc;
+  }, {} as Record<string, ManualField[]>);
+
+  const infoByCategory = INFO_FIELDS.reduce((acc, field) => {
+    if (!acc[field.category]) acc[field.category] = [];
+    acc[field.category].push(field);
+    return acc;
+  }, {} as Record<string, InfoField[]>);
 
   return (
     <div className="space-y-6 select-none">
@@ -379,10 +525,10 @@ export default function ManualDataTab({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="font-display font-black text-white text-xl uppercase tracking-wider">
-            Datos del Manual
+            Datos del Manual MG 350
           </h2>
           <p className="font-mono text-[10px] text-white/40 mt-1 uppercase tracking-widest">
-            Extrae especificaciones del manual de tu vehículo. 100% local.
+            Especificaciones reales del manual de taller. 100% local.
           </p>
         </div>
         <div className="flex gap-2">
@@ -435,7 +581,7 @@ export default function ManualDataTab({
         </div>
       )}
 
-      {/* Loading indicator */}
+      {/* Loading */}
       {loading && (
         <div className="glass-panel p-6 rounded-xl border border-white/10 flex items-center justify-center gap-3">
           <Loader2 className="w-5 h-5 text-[#FF3D00] animate-spin" />
@@ -445,7 +591,7 @@ export default function ManualDataTab({
         </div>
       )}
 
-      {/* Search in PDF */}
+      {/* Search */}
       {pdfText && (
         <div className="glass-panel p-5 rounded-xl border border-white/10">
           <div className="flex items-center gap-3 mb-3">
@@ -488,48 +634,37 @@ export default function ManualDataTab({
         </div>
       )}
 
-      {/* Manual Fields */}
-      <div className="space-y-3">
-        {MANUAL_FIELDS.map((field) => {
-          const isExpanded = expandedSections.has(field.key);
-          const value = specs[field.key] as string;
-          const wasAutoExtracted = autoExtracted.has(field.key);
+      {/* Categories */}
+      <div className="space-y-4">
+        {(Object.keys(CATEGORY_LABELS) as Array<keyof typeof CATEGORY_LABELS>).map((catKey) => {
+          const cat = CATEGORY_LABELS[catKey];
+          const fields = fieldsByCategory[catKey] || [];
+          const infos = infoByCategory[catKey] || [];
+          const isExpanded = expandedSections.has(catKey);
+
+          if (fields.length === 0 && infos.length === 0) return null;
 
           return (
-            <div
-              key={field.key}
-              className="glass-panel rounded-xl border border-white/10 overflow-hidden"
-            >
-              {/* Field Header */}
+            <div key={catKey} className="glass-panel rounded-xl border border-white/10 overflow-hidden">
+              {/* Category Header */}
               <button
-                onClick={() => toggleSection(field.key)}
+                onClick={() => toggleSection(catKey)}
                 className="w-full flex items-center justify-between p-4 hover:bg-white/2 transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-lg">{field.icon}</span>
+                  <div className="w-8 h-8 rounded flex items-center justify-center" style={{ backgroundColor: `${cat.color}20` }}>
+                    <span style={{ color: cat.color }}>{cat.icon}</span>
+                  </div>
                   <div className="text-left">
                     <span className="font-mono text-[10px] text-white/50 uppercase font-bold tracking-widest block">
-                      {field.label}
+                      {cat.label}
                     </span>
-                    {value && (
-                      <span className="font-mono text-xs text-white/80 mt-0.5 block truncate max-w-[200px] sm:max-w-[400px]">
-                        {value}
-                      </span>
-                    )}
+                    <span className="font-mono text-[9px] text-white/30">
+                      {fields.length + infos.length} campo(s)
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {wasAutoExtracted && (
-                    <span className="flex items-center gap-1 px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono text-[8px] font-bold uppercase rounded">
-                      <CheckCircle2 className="w-3 h-3" />
-                      AUTO
-                    </span>
-                  )}
-                  {value ? (
-                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                  ) : (
-                    <span className="w-2 h-2 rounded-full bg-white/20" />
-                  )}
                   {isExpanded ? (
                     <ChevronUp className="w-4 h-4 text-white/40" />
                   ) : (
@@ -538,24 +673,64 @@ export default function ManualDataTab({
                 </div>
               </button>
 
-              {/* Field Input */}
+              {/* Fields */}
               {isExpanded && (
-                <div className="px-4 pb-4 border-t border-white/5 pt-3">
-                  <input
-                    type="text"
-                    value={value}
-                    onChange={(e) =>
-                      onUpdateSpecs({ [field.key]: e.target.value })
-                    }
-                    placeholder={field.placeholder}
-                    className="w-full input-field p-3 font-mono text-xs text-white rounded bg-black border border-white/10 outline-none"
-                  />
-                  {field.patterns.length > 0 && (
-                    <p className="font-mono text-[8px] text-white/30 mt-2 uppercase">
-                      Patrones de detección:{" "}
-                      {field.patterns.length} configurados
-                    </p>
-                  )}
+                <div className="px-4 pb-4 border-t border-white/5 pt-3 space-y-3">
+                  {/* Editable fields */}
+                  {fields.map((field) => {
+                    const value = specs[field.key] as string;
+                    const wasAutoExtracted = autoExtracted.has(field.key);
+
+                    return (
+                      <div key={field.key} className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">{field.icon}</span>
+                          <span className="font-mono text-[9px] text-white/50 uppercase font-bold tracking-widest">
+                            {field.label}
+                          </span>
+                          {wasAutoExtracted && (
+                            <span className="flex items-center gap-1 px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono text-[7px] font-bold uppercase rounded">
+                              <CheckCircle2 className="w-2.5 h-2.5" />
+                              AUTO
+                            </span>
+                          )}
+                        </div>
+                        <input
+                          type="text"
+                          value={value}
+                          onChange={(e) => onUpdateSpecs({ [field.key]: e.target.value })}
+                          placeholder={field.placeholder}
+                          className="w-full input-field p-2.5 font-mono text-xs text-white rounded bg-black border border-white/10 outline-none"
+                        />
+                      </div>
+                    );
+                  })}
+
+                  {/* Info fields (read-only from PDF) */}
+                  {infos.map((field) => {
+                    const value = infoFields[field.key];
+                    const wasAutoExtracted = autoExtracted.has(field.key);
+
+                    return (
+                      <div key={field.key} className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">{field.icon}</span>
+                          <span className="font-mono text-[9px] text-white/50 uppercase font-bold tracking-widest">
+                            {field.label}
+                          </span>
+                          {wasAutoExtracted && (
+                            <span className="flex items-center gap-1 px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono text-[7px] font-bold uppercase rounded">
+                              <CheckCircle2 className="w-2.5 h-2.5" />
+                              AUTO
+                            </span>
+                          )}
+                        </div>
+                        <div className="w-full p-2.5 font-mono text-xs text-white/70 rounded bg-white/5 border border-white/5">
+                          {value || <span className="text-white/30">No detectado - ingresa manualmente</span>}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -568,21 +743,21 @@ export default function ManualDataTab({
         <div className="flex items-center gap-3 mb-3">
           <AlertCircle className="w-4 h-4 text-[#FF8A00]" />
           <span className="font-mono text-[10px] text-white/50 uppercase font-bold tracking-widest">
-            Resumen
+            Resumen MG 350
           </span>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="text-center p-3 bg-white/2 rounded">
             <div className="font-display text-2xl font-black text-[#FF3D00]">
-              {MANUAL_FIELDS.filter((f) => specs[f.key]).length}
+              {MANUAL_FIELDS.filter((f) => specs[f.key]).length + Object.keys(infoFields).length}
             </div>
             <div className="font-mono text-[9px] text-white/40 uppercase">
-              Completados
+              Detectados
             </div>
           </div>
           <div className="text-center p-3 bg-white/2 rounded">
             <div className="font-display text-2xl font-black text-white/40">
-              {MANUAL_FIELDS.filter((f) => !specs[f.key]).length}
+              {MANUAL_FIELDS.filter((f) => !specs[f.key]).length + INFO_FIELDS.length - Object.keys(infoFields).length}
             </div>
             <div className="font-mono text-[9px] text-white/40 uppercase">
               Pendientes
@@ -598,7 +773,7 @@ export default function ManualDataTab({
           </div>
           <div className="text-center p-3 bg-white/2 rounded">
             <div className="font-display text-2xl font-black text-[#FF8A00]">
-              {MANUAL_FIELDS.length}
+              {MANUAL_FIELDS.length + INFO_FIELDS.length}
             </div>
             <div className="font-mono text-[9px] text-white/40 uppercase">
               Total campos
