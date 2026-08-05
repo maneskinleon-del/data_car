@@ -17,23 +17,19 @@ import * as pdfjsLib from "pdfjs-dist";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { VehicleSpecs } from "../types";
 import {
-  VehicleTechnicalDatabase,
-  Component,
+  VehicleTechnicalDatabaseV2,
+  TechnicalComponentV2,
+  SpecField,
   SystemCategory,
-} from "../types/technical";
-import {
-  TechnicalExtractor,
-  normalizeText,
-  formatDataPoint,
-  getCoverageColor,
-  countFilledFields,
-  SYSTEM_RULE_COUNTS,
-} from "../lib/technicalExtractor";
-import { applySpecsSync } from "../lib/specsSync";
+} from "../types/technicalV2";
+import { extractDocumentLayout, DocumentLayout } from "../lib/pdfLayout";
+import { TechnicalExtractorV2 } from "../lib/technicalExtractorV2";
+import { applySpecsSyncV2 } from "../lib/specsSyncV2";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 const MAX_PDF_SIZE = 50 * 1024 * 1024;
+const DB_STORAGE_KEY = "mg350_technical_db_v2";
 
 interface TechnicalDatabaseProps {
   specs: VehicleSpecs;
@@ -54,23 +50,21 @@ const SYSTEM_CONFIG: Record<SystemCategory, { label: string; icon: string; gradi
   carroceria: { label: "Carrocería", icon: "🚗", gradient: "from-pink-500 to-rose-500" },
 };
 
-// Card de componente individual
-function ComponentCard({ component }: { component: Component; key?: string }) {
+// Estados visuales: los badges se renderizan inline en FieldRow (✓/⚪/⚠️)
+const VALIDATION_BADGE: Record<string, { text: string; cls: string }> = {
+  verified: { text: "VERIFIED", cls: "text-emerald-400" },
+  plausible: { text: "PLAUSIBLE", cls: "text-cyan-400" },
+  conflict: { text: "CONFLICTO", cls: "text-red-400" },
+  invalid: { text: "INVÁLIDO", cls: "text-white/30" },
+};
+
+// Card de componente V2 — muestra cada specField con estado, variante y trazabilidad
+function ComponentCardV2({ component }: { component: TechnicalComponentV2; key?: string }) {
   const [expanded, setExpanded] = useState(false);
-  
-  const fields = [
-    { label: "Especificación", value: formatDataPoint(component.specification) },
-    { label: "Capacidad", value: formatDataPoint(component.capacity) },
-    { label: "Viscosidad", value: formatDataPoint(component.viscosity) },
-    { label: "Grado", value: formatDataPoint(component.grade) },
-    { label: "Gap", value: formatDataPoint(component.gap) },
-    { label: "Torque", value: formatDataPoint(component.torque) },
-    { label: "Presión", value: formatDataPoint(component.pressure) },
-    { label: "Espesor", value: formatDataPoint(component.thickness) },
-    { label: "N° Parte", value: formatDataPoint(component.partNumber) },
-    { label: "Cantidad", value: component.quantity ? String(component.quantity.value) : "—" },
-  ].filter(f => f.value !== "—");
-  
+  const hasData = component.specFields.some((f) =>
+    f.values.some((v) => v.status === "extracted" && !v.conflict)
+  );
+
   return (
     <div className="p-3 rounded-lg border bg-white/5 border-white/10">
       <button
@@ -92,22 +86,16 @@ function ComponentCard({ component }: { component: Component; key?: string }) {
           <ChevronDown className="w-4 h-4 text-white/40" />
         )}
       </button>
-      
+
       {expanded && (
-        <div className="mt-3 space-y-2">
-          {fields.map((field) => (
-            <div key={field.label} className="flex items-center gap-2 text-[10px]">
-              <span className="font-mono text-white/40 uppercase w-20">{field.label}:</span>
-              <span className="font-mono text-white/80">{field.value}</span>
-            </div>
+        <div className="mt-3 space-y-3">
+          {component.specFields.map((field) => (
+            <FieldRow key={field.id} field={field} />
           ))}
-          {component.procedure?.tools && (
-            <div className="mt-2 pt-2 border-t border-white/5">
-              <span className="font-mono text-[8px] text-white/30 uppercase">Herramientas:</span>
-              <p className="font-mono text-[10px] text-white/60 mt-1">
-                {component.procedure.tools.join(", ")}
-              </p>
-            </div>
+          {!hasData && component.specFields.length === 0 && (
+            <p className="font-mono text-[10px] text-white/30">
+              Sin especificaciones definidas para este componente.
+            </p>
           )}
         </div>
       )}
@@ -115,35 +103,109 @@ function ComponentCard({ component }: { component: Component; key?: string }) {
   );
 }
 
-// Panel de cobertura técnica — % por sistema = componentes con dato real / reglas del sistema
-function CoveragePanel({ database }: { database: VehicleTechnicalDatabase }) {
-  const systems = Object.entries(database.components) as [SystemCategory, Component[]][];
+function FieldRow({ field }: { field: SpecField; key?: string }) {
+  return (
+    <div className="text-[10px]">
+      <div className="flex items-center justify-between mb-1">
+        <span className="font-mono text-white/40 uppercase tracking-wider">
+          {field.label}
+          {field.expectedUnit ? ` (${field.expectedUnit})` : ""}
+        </span>
+        {field.dependsOnVariant && (
+          <span className="font-mono text-[8px] text-white/30">depende de la transmisión</span>
+        )}
+      </div>
+      <div className="space-y-1.5">
+        {field.values.map((v, i) => {
+          if (v.status === "not_found") {
+            return (
+              <div key={i} className="flex items-center gap-2 font-mono text-white/30">
+                <span>⚪</span> No encontrado en el manual
+              </div>
+            );
+          }
+          if (v.status === "not_published") {
+            return (
+              <div key={i} className="flex items-center gap-2 font-mono text-amber-400/80">
+                <span>⚠️</span> El manual de taller no publica este dato
+              </div>
+            );
+          }
+          // status === "extracted"
+          return (
+            <div key={i} className="flex flex-col gap-0.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-emerald-400">✓</span>
+                <span className={`font-mono text-white/90 ${v.conflict ? "line-through text-red-400" : ""}`}>
+                  {v.value}
+                </span>
+                {v.variant && (
+                  <span className="px-1 py-0.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 font-mono text-[8px] rounded">
+                    {v.variant.label}
+                  </span>
+                )}
+                <span className={`font-mono text-[8px] ${VALIDATION_BADGE[v.validationStatus]?.cls ?? "text-white/30"}`}>
+                  {VALIDATION_BADGE[v.validationStatus]?.text ?? v.validationStatus}
+                </span>
+              </div>
+              {v.source && (
+                <div className="flex items-center gap-2 font-mono text-[8px] text-white/30 ml-5">
+                  <span>📄 p.{(v.source.pages ?? []).join(", ")}</span>
+                  {v.source.section && <span>· {v.source.section.slice(0, 40)}</span>}
+                  <span>· confianza {(v.confidence * 100).toFixed(0)}%</span>
+                </div>
+              )}
+              {v.conflict && (
+                <div className="ml-5 font-mono text-[8px] text-red-400">
+                  Conflicto sin resolver: hay valores rivales de distintas páginas. No usar para decidir.
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Panel de cobertura V2 — métrica decisionReady (datos utilizables, no campos llenos)
+function CoveragePanelV2({ database }: { database: VehicleTechnicalDatabaseV2 }) {
+  const systems = Object.entries(database.components) as [SystemCategory, TechnicalComponentV2[]][];
   const totalComponents = systems.reduce((sum, [, comps]) => sum + comps.length, 0);
-  
+  const c = database.coverage;
+
+  const perSystem = systems.map(([system, comps]) => {
+    const compsWithData = comps.filter((comp) =>
+      comp.specFields.some((f) => f.values.some((v) => v.status === "extracted" && !v.conflict))
+    ).length;
+    const percent = comps.length > 0 ? Math.round((compsWithData / comps.length) * 100) : 0;
+    return { system, comps, compsWithData, percent };
+  });
+
+  const decisionPercent = c.totalSlots > 0 ? Math.round((c.decisionReady / c.totalSlots) * 100) : 0;
+
   return (
     <div className="glass-panel p-5 rounded-xl border border-white/10">
       <h3 className="font-mono text-[10px] text-white/50 uppercase font-bold tracking-widest mb-4">
         Cobertura Técnica
       </h3>
-      
+
       <div className="space-y-3">
-        {systems.map(([system, components]) => {
+        {perSystem.map(({ system, comps, compsWithData, percent }) => {
           const config = SYSTEM_CONFIG[system];
-          const totalRules = SYSTEM_RULE_COUNTS[system] || 0;
-          const filled = components.filter((c) => countFilledFields(c) > 0).length;
-          const percent = totalRules > 0 ? Math.min(100, Math.round((filled / totalRules) * 100)) : 0;
-          
           return (
             <div key={system} className="flex items-center gap-3">
               <span className="text-sm">{config.icon}</span>
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-1">
                   <span className="font-mono text-[9px] text-white/60">{config.label}</span>
-                  <span className="font-mono text-[8px] text-white/40">{filled}/{totalRules}</span>
+                  <span className="font-mono text-[8px] text-white/40">{compsWithData}/{comps.length}</span>
                 </div>
                 <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full bg-gradient-to-r ${getCoverageColor(percent)} rounded-full transition-all`}
+                  <div
+                    className={`h-full bg-gradient-to-r ${
+                      percent >= 60 ? "from-emerald-500 to-green-500" : percent >= 30 ? "from-yellow-500 to-amber-500" : "from-white/30 to-white/10"
+                    } rounded-full transition-all`}
                     style={{ width: `${percent}%` }}
                   />
                 </div>
@@ -152,22 +214,39 @@ function CoveragePanel({ database }: { database: VehicleTechnicalDatabase }) {
           );
         })}
       </div>
-      
-      <div className="mt-4 pt-4 border-t border-white/10">
+
+      <div className="mt-4 pt-4 border-t border-white/10 space-y-1">
         <div className="flex items-center justify-between">
-          <span className="font-mono text-xs text-white/60">Componentes con datos</span>
+          <span className="font-mono text-xs text-white/60">Componentes</span>
           <span className="font-mono text-sm text-white font-bold">{totalComponents}</span>
         </div>
+        <div className="flex items-center justify-between">
+          <span className="font-mono text-xs text-white/60">Valores extraídos (✓)</span>
+          <span className="font-mono text-sm text-emerald-400 font-bold">{c.extracted}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="font-mono text-xs text-white/60">No encontrados (⚪)</span>
+          <span className="font-mono text-sm text-white/50 font-bold">{c.notFound}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="font-mono text-xs text-white/60">No publicados en manual (⚠️)</span>
+          <span className="font-mono text-sm text-amber-400 font-bold">{c.notPublished}</span>
+        </div>
         <div className="flex items-center justify-between mt-1">
-          <span className="font-mono text-xs text-white/60">Cobertura (datos verificados)</span>
-          <span className="font-mono text-sm text-emerald-400 font-bold">{database.coveragePercent}%</span>
+          <span className="font-mono text-xs text-white/60">Decision-ready</span>
+          <span className="font-mono text-sm text-cyan-400 font-bold">{c.decisionReady}</span>
         </div>
         <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden mt-2">
-          <div 
-            className={`h-full bg-gradient-to-r ${getCoverageColor(database.coveragePercent)} rounded-full transition-all`}
-            style={{ width: `${database.coveragePercent}%` }}
+          <div
+            className={`h-full bg-gradient-to-r ${
+              decisionPercent >= 60 ? "from-cyan-500 to-blue-500" : decisionPercent >= 30 ? "from-yellow-500 to-amber-500" : "from-white/30 to-white/10"
+            } rounded-full transition-all`}
+            style={{ width: `${Math.min(100, decisionPercent)}%` }}
           />
         </div>
+        <p className="font-mono text-[8px] text-white/30 mt-1 leading-relaxed">
+          "Decision-ready" = valores extraídos sin conflicto con confianza suficiente para decidir una compra.
+        </p>
       </div>
     </div>
   );
@@ -226,46 +305,63 @@ function OBD2ReferenceSection() {
   );
 }
 
+// ── Búsqueda en la DB V2 ────────────────────────────────────────────────────
+function searchDatabaseV2(db: VehicleTechnicalDatabaseV2, query: string): TechnicalComponentV2[] {
+  const q = query.toLowerCase().trim();
+  if (!q) return [];
+  const results: TechnicalComponentV2[] = [];
+  for (const comps of Object.values(db.components)) {
+    for (const comp of comps) {
+      const haystack = [
+        comp.name,
+        ...comp.specFields.flatMap((f) => f.values.map((v) => v.value)),
+        ...comp.specFields.map((f) => f.label),
+      ].join(" ").toLowerCase();
+      if (haystack.includes(q)) results.push(comp);
+    }
+  }
+  return results;
+}
+
 export default function TechnicalDatabaseTab({
   specs,
   onUpdateSpecs,
   triggerToast,
 }: TechnicalDatabaseProps) {
-  const [pdfText, setPdfText] = useState<string>("");
-  const [pdfPages, setPdfPages] = useState<string[]>([]);
+  const [pdfPages, setPdfPages] = useState<number>(0);
+  const [pdfChars, setPdfChars] = useState<number>(0);
   const [pdfName, setPdfName] = useState<string>(specs.manualPdfNombre || "");
   const [loading, setLoading] = useState(false);
-  const [database, setDatabase] = useState<VehicleTechnicalDatabase | null>(null);
+  const [database, setDatabase] = useState<VehicleTechnicalDatabaseV2 | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<Component[]>([]);
+  const [searchResults, setSearchResults] = useState<TechnicalComponentV2[]>([]);
   const [expandedSystems, setExpandedSystems] = useState<Set<SystemCategory>>(
-    new Set(["motor", "fluidos", "encendido"])
+    new Set(["motor", "fluidos", "encendido", "transmision"])
   );
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const extractorRef = useRef<TechnicalExtractor | null>(null);
-  
-  // Persist database to localStorage
+  const layoutRef = useRef<DocumentLayout | null>(null);
+
+  // Persist database to localStorage (schema V2)
   useEffect(() => {
     if (database) {
       try {
-        localStorage.setItem("mg350_technical_db", JSON.stringify(database));
+        localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(database));
       } catch (e) {
         console.error("Error saving technical database:", e);
       }
     }
   }, [database]);
-  
+
   // Load persisted database on mount + auto-sync campos vacíos de la ficha.
-  // Cubre bases construidas antes de que existiera la sincronización.
   useEffect(() => {
     if (specs.manualPdfNombre && !database) {
       try {
-        const saved = localStorage.getItem("mg350_technical_db");
+        const saved = localStorage.getItem(DB_STORAGE_KEY);
         if (saved) {
-          const parsed = JSON.parse(saved) as VehicleTechnicalDatabase;
-          if (parsed.extractionSource === specs.manualPdfNombre) {
+          const parsed = JSON.parse(saved) as VehicleTechnicalDatabaseV2;
+          if (parsed.schemaVersion === 2 && parsed.extractionSource === specs.manualPdfNombre) {
             setDatabase(parsed);
-            const { updates } = applySpecsSync(specs, parsed, false);
+            const { updates } = applySpecsSyncV2(specs, parsed, false);
             if (Object.keys(updates).length > 0) {
               onUpdateSpecs(updates);
             }
@@ -276,8 +372,8 @@ export default function TechnicalDatabaseTab({
       }
     }
   }, [specs.manualPdfNombre, database, specs, onUpdateSpecs]);
-  
-  const extractTextFromPdf = useCallback(
+
+  const extractLayoutFromPdf = useCallback(
     async (file: File) => {
       setLoading(true);
       try {
@@ -287,7 +383,7 @@ export default function TechnicalDatabaseTab({
           setLoading(false);
           return;
         }
-        
+
         const arrayBuffer = await file.arrayBuffer();
         let pdf;
         try {
@@ -297,33 +393,27 @@ export default function TechnicalDatabaseTab({
           setLoading(false);
           return;
         }
-        
-        let fullText = "";
-        const pages: string[] = [];
-        for (let i = 1; i <= pdf.numPages; i++) {
-          try {
-            const page = await pdf.getPage(i);
-            const textContent = await page.getTextContent();
-            const pageText = textContent.items.map((item: any) => item.str).join(" ");
-            pages.push(pageText);
-            fullText += pageText + "\n";
-          } catch (pageError) {
-            console.warn(`Error en página ${i}:`, pageError);
-          }
+
+        // Extraer LAYOUT (coordenadas x/y) — la base del pipeline V2.
+        // pdf.js entrega cada fragmento con su posición real; esto permite
+        // distinguir tablas de párrafos y evitar falsos positivos.
+        const layout = await extractDocumentLayout(pdf, pdf.numPages);
+        let totalChars = 0;
+        for (const page of layout.pages) {
+          for (const band of page.bands) totalChars += band.text.length;
         }
-        
-        if (fullText.trim().length === 0) {
+
+        if (totalChars === 0) {
           triggerToast("El PDF no contiene texto extraíble (escaneado).");
         } else {
-          fullText = normalizeText(fullText);
-          triggerToast(`Manual cargado. ${fullText.length.toLocaleString()} caracteres.`);
+          triggerToast(`Manual cargado. ${totalChars.toLocaleString()} caracteres.`);
         }
-        
-        setPdfText(fullText);
-        setPdfPages(pages);
+
+        layoutRef.current = layout;
+        setPdfPages(pdf.numPages);
+        setPdfChars(totalChars);
         setPdfName(file.name);
         setDatabase(null);
-        extractorRef.current = null; // la base cacheada pertenece al PDF anterior
         onUpdateSpecs({ manualPdfNombre: file.name });
       } catch (error: any) {
         triggerToast(`Error: ${error.message || "No se pudo procesar el PDF"}`);
@@ -333,37 +423,33 @@ export default function TechnicalDatabaseTab({
     },
     [onUpdateSpecs, triggerToast]
   );
-  
+
   const handleExtract = useCallback(() => {
-    if (!pdfText && pdfPages.length === 0) {
+    if (!layoutRef.current) {
       triggerToast("Primero carga un manual PDF.");
       return;
     }
-    
-    const extractor = new TechnicalExtractor(pdfPages.length > 0 ? pdfPages : pdfText);
-    extractorRef.current = extractor;
+
+    const extractor = new TechnicalExtractorV2(layoutRef.current, pdfName);
     const newDatabase = extractor.buildDatabase();
     newDatabase.extractionSource = pdfName;
     setDatabase(newDatabase);
-    
-    const totalComponents = Object.values(newDatabase.components)
-      .flat()
-      .length;
-    
-    // Auto-sync a la ficha: llena campos vacíos con los datos verificados
-    // (no pisa datos que el usuario haya ingresado manualmente).
-    const { updates, labels } = applySpecsSync(specs, newDatabase, false);
+
+    const c = newDatabase.coverage;
+
+    // Auto-sync a la ficha: solo llena campos vacíos con datos ✓ extraídos
+    // (respeta variantes MT/AT y nunca pisa datos manuales).
+    const { updates, labels } = applySpecsSyncV2(specs, newDatabase, false);
     if (Object.keys(updates).length > 0) {
       onUpdateSpecs(updates);
     }
-    
-    const syncNote =
-      labels.length > 0 ? ` · Ficha: +${labels.join(", ")}` : "";
-    
+
+    const syncNote = labels.length > 0 ? ` · Ficha: +${labels.join(", ")}` : "";
+
     triggerToast(
-      `Base técnica construida: ${totalComponents} componentes con datos verificados (${newDatabase.coveragePercent}% cobertura)${syncNote}`
+      `Base técnica construida: ${c.extracted} valores extraídos, ${c.decisionReady} decision-ready (${c.notPublished} no publicados en el manual)${syncNote}`
     );
-  }, [pdfText, pdfPages, pdfName, specs, onUpdateSpecs, triggerToast]);
+  }, [pdfName, specs, onUpdateSpecs, triggerToast]);
 
   // Sincronización forzada: sobreescribe los campos de la ficha con el manual
   const handleSyncToSpecs = useCallback(() => {
@@ -371,7 +457,7 @@ export default function TechnicalDatabaseTab({
       triggerToast("Primero construye la base técnica.");
       return;
     }
-    const { updates, labels } = applySpecsSync(specs, database, true);
+    const { updates, labels } = applySpecsSyncV2(specs, database, true);
     if (Object.keys(updates).length === 0) {
       triggerToast("La ficha ya está sincronizada con el manual.");
       return;
@@ -379,16 +465,12 @@ export default function TechnicalDatabaseTab({
     onUpdateSpecs(updates);
     triggerToast(`Ficha sincronizada: ${labels.join(", ")}`);
   }, [database, specs, onUpdateSpecs, triggerToast]);
-  
+
   const handleSearch = useCallback(() => {
-    if (!searchQuery.trim()) return;
-    
-    // Use cached extractor if available, otherwise create new one
-    const extractor = extractorRef.current || new TechnicalExtractor(pdfPages.length > 0 ? pdfPages : pdfText);
-    const results = extractor.searchComponent(searchQuery);
-    setSearchResults(results);
-  }, [searchQuery, pdfText, pdfPages]);
-  
+    if (!database) return;
+    setSearchResults(searchDatabaseV2(database, searchQuery));
+  }, [database, searchQuery]);
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -396,22 +478,22 @@ export default function TechnicalDatabaseTab({
       triggerToast("Solo se aceptan archivos PDF.");
       return;
     }
-    extractTextFromPdf(file);
+    extractLayoutFromPdf(file);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
-  
+
   const handleDelete = () => {
-    setPdfText("");
-    setPdfPages([]);
+    layoutRef.current = null;
+    setPdfPages(0);
+    setPdfChars(0);
     setPdfName("");
     setDatabase(null);
     setSearchResults([]);
-    extractorRef.current = null;
-    localStorage.removeItem("mg350_technical_db");
+    localStorage.removeItem(DB_STORAGE_KEY);
     onUpdateSpecs({ manualPdfNombre: "" });
     triggerToast("Manual eliminado.");
   };
-  
+
   const toggleSystem = (system: SystemCategory) => {
     setExpandedSystems((prev) => {
       const next = new Set(prev);
@@ -420,12 +502,12 @@ export default function TechnicalDatabaseTab({
       return next;
     });
   };
-  
+
   const systems = useMemo(() => {
     if (!database) return [];
-    return Object.entries(database.components) as [SystemCategory, Component[]][];
+    return Object.entries(database.components) as [SystemCategory, TechnicalComponentV2[]][];
   }, [database]);
-  
+
   return (
     <div className="space-y-6 select-none">
       {/* Header */}
@@ -435,11 +517,11 @@ export default function TechnicalDatabaseTab({
             Base Técnica MG 350
           </h2>
           <p className="font-mono text-[10px] text-white/40 mt-1 uppercase tracking-widest">
-            Componentes, especificaciones y datos accionables. 100% local.
+            Pipeline V2: extracción por layout con estados verificados. 100% local.
           </p>
         </div>
         <div className="flex gap-2">
-          {pdfText && !database && (
+          {pdfPages > 0 && !database && (
             <button
               onClick={handleExtract}
               className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:brightness-110 text-white font-display text-sm font-bold px-4 py-2.5 flex items-center justify-center gap-2 transition-transform active:scale-[0.98] cursor-pointer shadow-[0_4px_15px_rgba(16,185,129,0.3)] rounded-xl uppercase tracking-tighter"
@@ -473,7 +555,7 @@ export default function TechnicalDatabaseTab({
           />
         </div>
       </div>
-      
+
       {/* PDF Status */}
       {pdfName && (
         <div className="glass-panel p-4 rounded-xl border border-emerald-500/20 flex items-center justify-between">
@@ -484,7 +566,7 @@ export default function TechnicalDatabaseTab({
             <div>
               <p className="font-mono text-xs text-white font-bold">{pdfName}</p>
               <p className="font-mono text-[10px] text-white/40">
-                {pdfText.length.toLocaleString()} caracteres extraídos
+                {pdfChars.toLocaleString()} caracteres · {pdfPages} páginas · layout con coordenadas
               </p>
             </div>
           </div>
@@ -496,17 +578,17 @@ export default function TechnicalDatabaseTab({
           </button>
         </div>
       )}
-      
+
       {/* Loading */}
       {loading && (
         <div className="glass-panel p-6 rounded-xl border border-white/10 flex items-center justify-center gap-3">
           <Loader2 className="w-5 h-5 text-[#FF3D00] animate-spin" />
           <span className="font-mono text-xs text-white/60 uppercase">
-            Extrayendo texto del PDF...
+            Extrayendo layout del PDF (coordenadas x/y)...
           </span>
         </div>
       )}
-      
+
       {/* Search */}
       {database && (
         <div className="glass-panel p-5 rounded-xl border border-white/10">
@@ -538,29 +620,34 @@ export default function TechnicalDatabaseTab({
                 {searchResults.length} resultado(s):
               </p>
               {searchResults.map((comp) => (
-                <ComponentCard key={comp.id} component={comp} />
+                <ComponentCardV2 key={comp.id} component={comp} />
               ))}
             </div>
           )}
+          {searchQuery && searchResults.length === 0 && (
+            <p className="mt-3 font-mono text-[10px] text-white/30">
+              Sin resultados para "{searchQuery}".
+            </p>
+          )}
         </div>
       )}
-      
+
       {/* Base Técnica */}
       {database && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Panel de cobertura */}
           <div className="lg:col-span-1">
-            <CoveragePanel database={database} />
+            <CoveragePanelV2 database={database} />
           </div>
-          
+
           {/* Sistemas */}
           <div className="lg:col-span-2 space-y-4">
             {systems.map(([system, components]) => {
               const config = SYSTEM_CONFIG[system];
               const isExpanded = expandedSystems.has(system);
-              
+
               if (components.length === 0) return null;
-              
+
               return (
                 <div key={system} className="glass-panel rounded-xl border border-white/10 overflow-hidden">
                   <button
@@ -586,11 +673,11 @@ export default function TechnicalDatabaseTab({
                       <ChevronDown className="w-4 h-4 text-white/40" />
                     )}
                   </button>
-                  
+
                   {isExpanded && (
                     <div className="px-4 pb-4 border-t border-white/5 pt-3 space-y-2">
                       {components.map((comp) => (
-                        <ComponentCard key={comp.id} component={comp} />
+                        <ComponentCardV2 key={comp.id} component={comp} />
                       ))}
                     </div>
                   )}
@@ -600,12 +687,12 @@ export default function TechnicalDatabaseTab({
           </div>
         </div>
       )}
-      
+
       {/* OBD2 Reference — static, not extracted from manual */}
       {database && (
         <OBD2ReferenceSection />
       )}
-      
+
       {/* Empty state */}
       {!database && !loading && (
         <div className="glass-panel p-12 rounded-xl border border-white/10 text-center">
@@ -616,8 +703,8 @@ export default function TechnicalDatabaseTab({
             Sube un manual para construir la base técnica
           </h3>
           <p className="font-mono text-[10px] text-white/30 max-w-md mx-auto">
-            El sistema extraerá especificaciones, identificación de piezas y datos 
-            accionables del manual de tu vehículo.
+            El sistema extraerá especificaciones con estados verificados: ✓ extraído del manual,
+            ⚪ no encontrado o ⚠️ no publicado. Cada dato conserva su página y confianza.
           </p>
         </div>
       )}

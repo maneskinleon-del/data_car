@@ -197,7 +197,11 @@ export const COMPONENT_DEFS: ComponentDef[] = [
         id: "type",
         label: "Tipo",
         concept: /anticongelante|refrigerante/i,
-        valuePattern: /(OAT|IAT|HOAT|etileno\s*glicol)/i,
+        // \b evita falsos positivos por substring: "IAT" matcheaba dentro de
+        // "inmediatamente" (p.25-64) — la Prioridad 1 dice que un dato
+        // incorrecto es peor que uno ausente. El manual p.75 dice "50% OAT
+        // (ácido orgánico)" y "anticongelante a base de etileno glicol".
+        valuePattern: /(\bOAT\b|\bIAT\b|\bHOAT\b|etileno\s*glicol)/i,
         unit: "tipo",
         scope: "may-publish",
         transform: (r) => r.trim(),
