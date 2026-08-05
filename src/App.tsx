@@ -6,6 +6,7 @@ import {
   Wrench,
   FileText,
   User,
+  BookOpen,
 } from "lucide-react";
 
 import Header from "./components/Header";
@@ -14,6 +15,7 @@ import SpecForm from "./components/SpecForm";
 import HistoryList from "./components/HistoryList";
 import MaintenanceModal from "./components/MaintenanceModal";
 import DocumentsTab from "./components/DocumentsTab";
+import ManualDataTab from "./components/ManualDataTab";
 
 import { VehicleSpecs, ServiceRecord } from "./types";
 
@@ -47,6 +49,20 @@ export default function App() {
       alfombra: "",
       filtroAire: "",
       ultimoCambioKm: 0,
+      // Manual fields
+      aceiteCaja: "",
+      bujias: "",
+      fusibles: "",
+      refrigerante: "",
+      tipoCombustible: "",
+      liquidoFrenos: "",
+      correaDistribucion: "",
+      tensionCorrea: "",
+      torqueTornillos: "",
+      capacidadEstanque: "",
+      peso: "",
+      dimensiones: "",
+      manualPdfNombre: "",
     };
   });
 
@@ -256,13 +272,22 @@ export default function App() {
         {/* TAB 3: DOCUMENTOS (SOAP, Revisión Técnica, Licencia...) */}
         {activeTab === "documents" && <DocumentsTab triggerToast={triggerToast} />}
 
+        {/* TAB 4: DATOS DEL MANUAL */}
+        {activeTab === "manual" && (
+          <ManualDataTab
+            specs={specs}
+            onUpdateSpecs={(updated) => setSpecs((prev) => ({ ...prev, ...updated }))}
+            triggerToast={triggerToast}
+          />
+        )}
+
       </main>
 
       {/* Bottom Dock Navigation (mobile) */}
       <nav className="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-[#0A0A0A]/95 backdrop-blur-xl border-t border-white/5 shadow-[0_-5px_30px_rgba(0,0,0,0.8)] rounded-t-xl select-none font-mono">
-        {(["garage", "service", "documents"] as const).map((tab) => {
-          const labels: Record<string, string> = { garage: "Garaje", service: "Servicio", documents: "Docs" };
-          const Icon = { garage: Car, service: Wrench, documents: FileText }[tab];
+        {(["garage", "service", "documents", "manual"] as const).map((tab) => {
+          const labels: Record<string, string> = { garage: "Garaje", service: "Servicio", documents: "Docs", manual: "Manual" };
+          const Icon = { garage: Car, service: Wrench, documents: FileText, manual: BookOpen }[tab];
           return (
             <button
               key={tab}

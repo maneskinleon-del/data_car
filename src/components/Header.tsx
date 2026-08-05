@@ -1,5 +1,5 @@
 import React from "react";
-import { Menu, FileText } from "lucide-react";
+import { Menu, FileText, BookOpen } from "lucide-react";
 
 interface HeaderProps {
   onMenuToggle: () => void;
@@ -64,6 +64,16 @@ export default function Header({ onMenuToggle, activeTab, onTabChange }: HeaderP
             }`}
           >
             Documentos
+          </button>
+          <button
+            onClick={() => onTabChange("manual")}
+            className={`font-mono text-[11px] font-bold tracking-[0.2em] uppercase transition-all duration-200 cursor-pointer pb-1 ${
+              activeTab === "manual" 
+                ? "text-white border-b-2 border-[#FF3D00]" 
+                : "text-white/50 hover:text-white"
+            }`}
+          >
+            Manual
           </button>
         </nav>
 

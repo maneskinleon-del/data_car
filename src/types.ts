@@ -12,6 +12,20 @@ export interface VehicleSpecs {
   alfombra: string;
   filtroAire: string;
   ultimoCambioKm: number;
+  // === Datos del Manual (extraídos o ingresados por el usuario) ===
+  aceiteCaja: string;        // Aceite de caja / transmisión
+  bujias: string;            // Bujías (modelo, gap)
+  fusibles: string;          // Fusibles (tabla resumen)
+  refrigerante: string;      // Refrigerante / anticongelante
+  tipoCombustible: string;   // Tipo de gasolina (octanaje)
+  liquidoFrenos: string;     // Líquido de frenos
+  correaDistribucion: string;// Correa de distribución
+  tensionCorrea: string;     // Tensión de correa
+  torqueTornillos: string;   // Torque de tornillos (cabeza, tapa, etc.)
+  capacidadEstanque: string; // Capacidad del estanque
+  peso: string;              // Peso en vacío
+  dimensiones: string;       // Largo x Ancho x Alto
+  manualPdfNombre: string;   // Nombre del archivo del manual subido
 }
 
 export interface ServiceRecord {
@@ -25,7 +39,7 @@ export interface ServiceRecord {
 }
 
 // Tipos de documento del vehículo que se pueden guardar en PDF
-export type DocumentoTipo = 'soap' | 'revision_tecnica' | 'licencia' | 'permiso_circulacion' | 'otro';
+export type DocumentoTipo = 'soap' | 'revision_tecnica' | 'licencia' | 'permiso_circulacion' | 'manual' | 'otro';
 
 export interface DocumentoVehiculo {
   id: string;

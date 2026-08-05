@@ -8,6 +8,7 @@ const TIPO_LABEL: Record<DocumentoTipo, string> = {
   revision_tecnica: "Revisión Técnica",
   licencia: "Licencia de Conducir",
   permiso_circulacion: "Permiso de Circulación",
+  manual: "Manual del Vehículo",
   otro: "Otro documento",
 };
 

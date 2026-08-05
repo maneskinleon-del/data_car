@@ -1,0 +1,549 @@
+import React, { useState, useRef, useCallback } from "react";
+import {
+  BookOpen,
+  Upload,
+  Search,
+  FileText,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+  Trash2,
+  Zap,
+} from "lucide-react";
+import * as pdfjsLib from "pdfjs-dist";
+import { VehicleSpecs } from "../types";
+
+// Configure PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+interface ManualDataTabProps {
+  specs: VehicleSpecs;
+  onUpdateSpecs: (updated: Partial<VehicleSpecs>) => void;
+  triggerToast: (msg: string) => void;
+}
+
+// Fields that can be extracted from the manual
+interface ManualField {
+  key: keyof VehicleSpecs;
+  label: string;
+  icon: string;
+  placeholder: string;
+  patterns: RegExp[]; // Auto-detection patterns
+}
+
+const MANUAL_FIELDS: ManualField[] = [
+  {
+    key: "aceiteMotor",
+    label: "Aceite de Motor",
+    icon: "🛢️",
+    placeholder: "p. ej. SAE 5W-30 API SN Plus",
+    patterns: [
+      /aceite\s+(?:de\s+)?motor[:\s]+([^\n.]{5,60})/i,
+      /SAE\s+\d+[WR]-\d+/i,
+      /API\s+[SLSPSN]+\s*(?:Plus|CF)?/i,
+      /oil\s+(?:type|spec|grade)[:\s]+([^\n.]{5,60})/i,
+    ],
+  },
+  {
+    key: "aceiteCaja",
+    label: "Aceite de Caja / Transmisión",
+    icon: "⚙️",
+    placeholder: "p. ej. SAE 75W-90 GL-4",
+    patterns: [
+      /aceite\s+(?:de\s+)?(?:caja|transmisi[oó]n)[:\s]+([^\n.]{5,60})/i,
+      /transmisi[oó]n\s+(?:fluid|oil|aceite)[:\s]+([^\n.]{5,60})/i,
+      /GL-[345]\s*/i,
+    ],
+  },
+  {
+    key: "bujias",
+    label: "Bujías",
+    icon: "⚡",
+    placeholder: "p. ej. NGK BPR6ES, gap 0.8mm",
+    patterns: [
+      /buj[ií]as?[:\s]+([^\n.]{5,60})/i,
+      /NGK\s+[A-Z0-9]{3,10}/i,
+      /DENSO\s+[A-Z0-9]{3,10}/i,
+      /champion\s+[A-Z0-9]{3,10}/i,
+      /spark\s+plug[s]?[:\s]+([^\n.]{5,60})/i,
+      /gap[:\s]+(\d+\.?\d*\s*mm)/i,
+    ],
+  },
+  {
+    key: "fusibles",
+    label: "Fusibles",
+    icon: "🔌",
+    placeholder: "p. ej. Caja 1: 10A (Limpiaparabrisas), 15A (Luces)",
+    patterns: [
+      /fusible[s]?[:\s]+([^\n]{10,100})/i,
+      /\d+[A]\s*\([^)]*\)/gi,
+      /fuse\s+(?:box|panel)[:\s]+([^\n]{10,100})/i,
+    ],
+  },
+  {
+    key: "refrigerante",
+    label: "Refrigerante / Anticongelante",
+    icon: "❄️",
+    placeholder: "p. ej. Etilenglicol 50%",
+    patterns: [
+      /refrigerante[:\s]+([^\n.]{5,60})/i,
+      /anticongelante[:\s]+([^\n.]{5,60})/i,
+      /coolant[:\s]+([^\n.]{5,60})/i,
+      /etilenglicol/i,
+    ],
+  },
+  {
+    key: "tipoCombustible",
+    label: "Tipo de Combustible",
+    icon: "⛽",
+    placeholder: "p. ej. Gasolina 95 octanos",
+    patterns: [
+      /(?:gasolina|gasolina|petrol|fuel)[:\s]+([^\n.]{5,40})/i,
+      /\d{2,3}\s*octanos?/i,
+      /RON\s*\d+/i,
+      /AKI\s*\d+/i,
+    ],
+  },
+  {
+    key: "liquidoFrenos",
+    label: "Líquido de Frenos",
+    icon: "🛑",
+    placeholder: "p. ej. DOT 4",
+    patterns: [
+      /l[ií]quido\s+de\s+frenos?[:\s]+([^\n.]{3,30})/i,
+      /brake\s+fluid[:\s]+([^\n.]{3,30})/i,
+      /DOT\s*[3456]/i,
+    ],
+  },
+  {
+    key: "correaDistribucion",
+    label: "Correa de Distribución",
+    icon: "🔄",
+    placeholder: "p. ej. Cambio cada 60,000 km",
+    patterns: [
+      /correa\s+(?:de\s+)?distribuci[oó]n[:\s]+([^\n.]{5,60})/i,
+      /timing\s+belt[:\s]+([^\n.]{5,60})/i,
+    ],
+  },
+  {
+    key: "capacidadEstanque",
+    label: "Capacidad del Estanque",
+    icon: "🪣",
+    placeholder: "p. ej. 45 litros",
+    patterns: [
+      /capacidad\s+(?:del\s+)?(?:estanque|tanque|combustible)[:\s]+([^\n.]{3,30})/i,
+      /fuel\s+tank[:\s]+([^\n.]{3,30})/i,
+      /\d+\.?\d*\s*(?:litros?|L\b)/i,
+    ],
+  },
+  {
+    key: "torqueTornillos",
+    label: "Torque de Tornillos",
+    icon: "🔧",
+    placeholder: "p. ej. Tapa de válvulas: 12 Nm",
+    patterns: [
+      /torque[:\s]+([^\n.]{5,80})/i,
+      /apriete[:\s]+([^\n.]{5,80})/i,
+      /\d+\s*N\.?m/gi,
+    ],
+  },
+  {
+    key: "peso",
+    label: "Peso en Vacío",
+    icon: "⚖️",
+    placeholder: "p. ej. 1,185 kg",
+    patterns: [
+      /peso\s+(?:en\s+)?(?:vac[ií]o|seco)[:\s]+([^\n.]{3,30})/i,
+      /curb\s+weight[:\s]+([^\n.]{3,30})/i,
+      /\d[\d,.]+\s*kg/i,
+    ],
+  },
+  {
+    key: "dimensiones",
+    label: "Dimensiones (L x A x Al)",
+    icon: "📐",
+    placeholder: "p. ej. 4,510 x 1,780 x 1,490 mm",
+    patterns: [
+      /dimensiones?[:\s]+([^\n.]{10,80})/i,
+      /largo\s*x\s*ancho/i,
+      /\d{4}\s*x\s*\d{3,4}\s*x\s*\d{3,4}\s*mm/i,
+    ],
+  },
+];
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export default function ManualDataTab({
+  specs,
+  onUpdateSpecs,
+  triggerToast,
+}: ManualDataTabProps) {
+  const [pdfText, setPdfText] = useState<string>("");
+  const [pdfName, setPdfName] = useState<string>(specs.manualPdfNombre || "");
+  const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<string[]>([]);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(
+    new Set(["aceiteMotor"])
+  );
+  const [autoExtracted, setAutoExtracted] = useState<Set<string>>(new Set());
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Extract text from PDF
+  const extractTextFromPdf = useCallback(
+    async (file: File) => {
+      setLoading(true);
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let fullText = "";
+
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items.map((item: any) => item.str).join(" ");
+          fullText += pageText + "\n";
+        }
+
+        setPdfText(fullText);
+        setPdfName(file.name);
+        onUpdateSpecs({ manualPdfNombre: file.name });
+        triggerToast(`Manual "${file.name}" cargado. ${fullText.length.toLocaleString()} caracteres extraídos.`);
+      } catch (error) {
+        console.error("Error extracting PDF:", error);
+        triggerToast("Error al leer el PDF. Asegúrate de que sea un archivo válido.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [onUpdateSpecs, triggerToast]
+  );
+
+  // Handle file upload
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.type !== "application/pdf") {
+      triggerToast("Solo se aceptan archivos PDF.");
+      return;
+    }
+    extractTextFromPdf(file);
+  };
+
+  // Auto-detect values from PDF text
+  const handleAutoExtract = () => {
+    if (!pdfText) {
+      triggerToast("Primero carga un manual PDF.");
+      return;
+    }
+
+    const extracted = new Set<string>();
+    const updates: Partial<VehicleSpecs> = {};
+
+    for (const field of MANUAL_FIELDS) {
+      for (const pattern of field.patterns) {
+        const match = pdfText.match(pattern);
+        if (match) {
+          const value = match[1] || match[0];
+          // Only update if the field is empty or user confirms
+          if (!specs[field.key] || specs[field.key] === "") {
+            (updates as any)[field.key] = value.trim();
+            extracted.add(field.key);
+          }
+          break;
+        }
+      }
+    }
+
+    if (Object.keys(updates).length > 0) {
+      onUpdateSpecs(updates);
+      setAutoExtracted(extracted);
+      triggerToast(
+        `${Object.keys(updates).length} campo(s) detectado(s) automáticamente.`
+      );
+    } else {
+      triggerToast("No se detectaron nuevos campos. Puedes ingresarlos manualmente.");
+    }
+  };
+
+  // Search in PDF text
+  const handleSearch = () => {
+    if (!searchQuery.trim() || !pdfText) return;
+
+    const query = searchQuery.toLowerCase();
+    const lines = pdfText.split("\n");
+    const results: string[] = [];
+
+    for (const line of lines) {
+      if (line.toLowerCase().includes(query)) {
+        results.push(line.trim());
+      }
+    }
+
+    setSearchResults(results.slice(0, 20)); // Limit to 20 results
+  };
+
+  // Toggle section expansion
+  const toggleSection = (key: string) => {
+    setExpandedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
+  // Delete stored manual PDF
+  const handleDeleteManual = () => {
+    setPdfText("");
+    setPdfName("");
+    onUpdateSpecs({ manualPdfNombre: "" });
+    setAutoExtracted(new Set());
+    triggerToast("Manual eliminado.");
+  };
+
+  return (
+    <div className="space-y-6 select-none">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="font-display font-black text-white text-xl uppercase tracking-wider">
+            Datos del Manual
+          </h2>
+          <p className="font-mono text-[10px] text-white/40 mt-1 uppercase tracking-widest">
+            Extrae especificaciones del manual de tu vehículo. 100% local.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          {pdfText && (
+            <button
+              onClick={handleAutoExtract}
+              className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:brightness-110 text-white font-display text-sm font-bold px-4 py-2.5 flex items-center justify-center gap-2 transition-transform active:scale-[0.98] cursor-pointer shadow-[0_4px_15px_rgba(16,185,129,0.3)] rounded-xl uppercase tracking-tighter"
+            >
+              <Zap className="w-4 h-4" />
+              Auto-detectar
+            </button>
+          )}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="bg-gradient-to-r from-[#FF3D00] to-[#FF8A00] hover:brightness-110 text-white font-display text-sm font-bold px-6 py-2.5 flex items-center justify-center gap-2 transition-transform active:scale-[0.98] cursor-pointer shadow-[0_6px_20px_rgba(255,61,0,0.3)] rounded-xl uppercase tracking-tighter"
+          >
+            <Upload className="w-4 h-4" />
+            {pdfName ? "Reemplazar PDF" : "Subir Manual PDF"}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/pdf"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+        </div>
+      </div>
+
+      {/* PDF Status */}
+      {pdfName && (
+        <div className="glass-panel p-4 rounded-xl border border-emerald-500/20 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+              <FileText className="w-5 h-5 text-emerald-400" />
+            </div>
+            <div>
+              <p className="font-mono text-xs text-white font-bold">{pdfName}</p>
+              <p className="font-mono text-[10px] text-white/40">
+                {pdfText.length.toLocaleString()} caracteres extraídos
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleDeleteManual}
+            className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Loading indicator */}
+      {loading && (
+        <div className="glass-panel p-6 rounded-xl border border-white/10 flex items-center justify-center gap-3">
+          <Loader2 className="w-5 h-5 text-[#FF3D00] animate-spin" />
+          <span className="font-mono text-xs text-white/60 uppercase">
+            Extrayendo texto del PDF...
+          </span>
+        </div>
+      )}
+
+      {/* Search in PDF */}
+      {pdfText && (
+        <div className="glass-panel p-5 rounded-xl border border-white/10">
+          <div className="flex items-center gap-3 mb-3">
+            <Search className="w-4 h-4 text-[#FF3D00]" />
+            <span className="font-mono text-[10px] text-white/50 uppercase font-bold tracking-widest">
+              Buscar en el manual
+            </span>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              placeholder='p. ej. "aceite", "bujía", "fusible"...'
+              className="flex-1 input-field p-3 font-mono text-xs text-white rounded bg-black border border-white/10 outline-none"
+            />
+            <button
+              onClick={handleSearch}
+              className="px-4 py-3 bg-white/5 hover:bg-white/10 text-white font-mono text-[10px] font-bold uppercase tracking-widest rounded transition-colors"
+            >
+              Buscar
+            </button>
+          </div>
+          {searchResults.length > 0 && (
+            <div className="mt-3 space-y-1 max-h-48 overflow-y-auto">
+              <p className="font-mono text-[9px] text-white/40 mb-2">
+                {searchResults.length} resultado(s):
+              </p>
+              {searchResults.map((result, i) => (
+                <div
+                  key={i}
+                  className="font-mono text-[10px] text-white/70 bg-black/50 p-2 rounded border border-white/5"
+                >
+                  {result}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Manual Fields */}
+      <div className="space-y-3">
+        {MANUAL_FIELDS.map((field) => {
+          const isExpanded = expandedSections.has(field.key);
+          const value = specs[field.key] as string;
+          const wasAutoExtracted = autoExtracted.has(field.key);
+
+          return (
+            <div
+              key={field.key}
+              className="glass-panel rounded-xl border border-white/10 overflow-hidden"
+            >
+              {/* Field Header */}
+              <button
+                onClick={() => toggleSection(field.key)}
+                className="w-full flex items-center justify-between p-4 hover:bg-white/2 transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-lg">{field.icon}</span>
+                  <div className="text-left">
+                    <span className="font-mono text-[10px] text-white/50 uppercase font-bold tracking-widest block">
+                      {field.label}
+                    </span>
+                    {value && (
+                      <span className="font-mono text-xs text-white/80 mt-0.5 block truncate max-w-[200px] sm:max-w-[400px]">
+                        {value}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {wasAutoExtracted && (
+                    <span className="flex items-center gap-1 px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono text-[8px] font-bold uppercase rounded">
+                      <CheckCircle2 className="w-3 h-3" />
+                      AUTO
+                    </span>
+                  )}
+                  {value ? (
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  ) : (
+                    <span className="w-2 h-2 rounded-full bg-white/20" />
+                  )}
+                  {isExpanded ? (
+                    <ChevronUp className="w-4 h-4 text-white/40" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-white/40" />
+                  )}
+                </div>
+              </button>
+
+              {/* Field Input */}
+              {isExpanded && (
+                <div className="px-4 pb-4 border-t border-white/5 pt-3">
+                  <input
+                    type="text"
+                    value={value}
+                    onChange={(e) =>
+                      onUpdateSpecs({ [field.key]: e.target.value })
+                    }
+                    placeholder={field.placeholder}
+                    className="w-full input-field p-3 font-mono text-xs text-white rounded bg-black border border-white/10 outline-none"
+                  />
+                  {field.patterns.length > 0 && (
+                    <p className="font-mono text-[8px] text-white/30 mt-2 uppercase">
+                      Patrones de detección:{" "}
+                      {field.patterns.length} configurados
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Summary */}
+      <div className="glass-panel p-5 rounded-xl border border-white/10">
+        <div className="flex items-center gap-3 mb-3">
+          <AlertCircle className="w-4 h-4 text-[#FF8A00]" />
+          <span className="font-mono text-[10px] text-white/50 uppercase font-bold tracking-widest">
+            Resumen
+          </span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="text-center p-3 bg-white/2 rounded">
+            <div className="font-display text-2xl font-black text-[#FF3D00]">
+              {MANUAL_FIELDS.filter((f) => specs[f.key]).length}
+            </div>
+            <div className="font-mono text-[9px] text-white/40 uppercase">
+              Completados
+            </div>
+          </div>
+          <div className="text-center p-3 bg-white/2 rounded">
+            <div className="font-display text-2xl font-black text-white/40">
+              {MANUAL_FIELDS.filter((f) => !specs[f.key]).length}
+            </div>
+            <div className="font-mono text-[9px] text-white/40 uppercase">
+              Pendientes
+            </div>
+          </div>
+          <div className="text-center p-3 bg-white/2 rounded">
+            <div className="font-display text-2xl font-black text-emerald-400">
+              {autoExtracted.size}
+            </div>
+            <div className="font-mono text-[9px] text-white/40 uppercase">
+              Auto-detectados
+            </div>
+          </div>
+          <div className="text-center p-3 bg-white/2 rounded">
+            <div className="font-display text-2xl font-black text-[#FF8A00]">
+              {MANUAL_FIELDS.length}
+            </div>
+            <div className="font-mono text-[9px] text-white/40 uppercase">
+              Total campos
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

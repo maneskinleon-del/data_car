@@ -1,5 +1,5 @@
 import React from "react";
-import { History, Settings, HelpCircle, X, Car, FileText } from "lucide-react";
+import { History, Settings, HelpCircle, X, Car, FileText, BookOpen } from "lucide-react";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -84,6 +84,17 @@ export default function Sidebar({ isOpen, onClose, onTabChange }: SidebarProps) 
             >
               <FileText className="w-4.5 h-4.5 text-[#FF3D00] group-hover:scale-110 transition-transform" />
               <span>Documentos (SOAP, Rev. Técnica...)</span>
+            </button>
+
+            <button
+              onClick={() => {
+                onTabChange("manual");
+                onClose();
+              }}
+              className="w-full flex items-center gap-4 text-left p-3.5 border border-transparent hover:border-white/5 hover:bg-white/2 hover:text-[#FF3D00] text-white/70 transition-all cursor-pointer font-mono text-xs uppercase tracking-widest group"
+            >
+              <BookOpen className="w-4.5 h-4.5 text-[#FF3D00] group-hover:scale-110 transition-transform" />
+              <span>Datos del Manual</span>
             </button>
 
             <div className="h-px bg-white/10 my-6" />
