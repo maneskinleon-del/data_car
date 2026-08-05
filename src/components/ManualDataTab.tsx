@@ -41,9 +41,8 @@ interface ManualField {
   category: "motor" | "fluidos" | "encendido" | "frenos" | "mantencion" | "diagnostico";
 }
 
-// MG 350 specific fields based on real manual data
+// MG 350 specific fields - optimized for actual manual content
 const MANUAL_FIELDS: ManualField[] = [
-  // === MOTOR ===
   {
     key: "aceiteMotor",
     label: "Aceite de Motor",
@@ -51,78 +50,11 @@ const MANUAL_FIELDS: ManualField[] = [
     placeholder: "4.0L SAE 5W-30 / 10W-40",
     category: "motor",
     patterns: [
-      /c[aá]rter\s+de\s+aceite[:\s]+([^\n.]{3,60})/i,
-      /aceite\s+(?:de\s+)?motor[:\s]+([^\n.]{3,60})/i,
-      /(\d+\.?\d*)\s*L\s+SAE\s+\d+[WR]-\d+/i,
       /SAE\s+5W-30/i,
       /SAE\s+10W-40/i,
-      /capacidad\s+(?:de\s+)?aceite[:\s]+([^\n.]{3,40})/i,
-    ],
-  },
-  {
-    key: "bujias",
-    label: "Bujías",
-    icon: "⚡",
-    placeholder: "Iridio/Platino, calibre 0.85 mm",
-    category: "encendido",
-    patterns: [
-      /buj[ií]as?\s+de\s+(?:iridio|platino)[:\s]+([^\n.]{3,60})/i,
-      /calibre[:\s]+(\d+\.?\d*\s*mm)/i,
-      /buj[ií]as?[:\s]+([^\n.]{3,60})/i,
-      /NGK\s+[A-Z0-9]{2,10}/i,
-      /spark\s+plug[:\s]+([^\n.]{3,60})/i,
-      /gap[:\s]+(\d+\.?\d*\s*mm)/i,
-    ],
-  },
-  {
-    key: "fusibles",
-    label: "Fusibles",
-    icon: "🔌",
-    placeholder: "No.13 - Caja de fusibles del motor",
-    category: "diagnostico",
-    patterns: [
-      /fusible[s]?[:\s]+([^\n]{5,150})/i,
-      /No\.\d+\s+(?:en\s+la\s+)?caja\s+de\s+fusibles/i,
-      /caja\s+de\s+fusibles[:\s]+([^\n]{5,150})/i,
-    ],
-  },
-  {
-    key: "refrigerante",
-    label: "Refrigerante",
-    icon: "❄️",
-    placeholder: "6.5L orgánico OAT",
-    category: "fluidos",
-    patterns: [
-      /refrigerante\s+(?:org[aá]nico\s+)?(?:OAT)?[:\s]+([^\n.]{3,60})/i,
-      /(\d+\.?\d*)\s*L\s+(?:de\s+)?(?:refrigerante|OAT)/i,
-      /coolant[:\s]+([^\n.]{3,60})/i,
-      /anticongelante[:\s]+([^\n.]{3,60})/i,
-    ],
-  },
-  {
-    key: "tipoCombustible",
-    label: "Combustible",
-    icon: "⛽",
-    placeholder: "55L / 93 octanos",
-    category: "fluidos",
-    patterns: [
-      /estanque\s+de\s+(?:bencina|gasolina)[:\s]+([^\n.]{3,60})/i,
-      /(\d+)\s*(?:litros?|L)\s*(?:de\s+)?(?:bencina|gasolina)/i,
-      /(\d+)\s+octanos?/i,
-      /RON\s*(\d+)/i,
-      /capacidad\s+(?:del\s+)?(?:estanque|tanque)[:\s]+([^\n.]{3,40})/i,
-    ],
-  },
-  {
-    key: "liquidoFrenos",
-    label: "Líquido de Frenos",
-    icon: "🛑",
-    placeholder: "DOT 4",
-    category: "frenos",
-    patterns: [
-      /l[ií]quido\s+de\s+frenos?[:\s]+([^\n.]{3,40})/i,
-      /DOT\s*[3456]/i,
-      /brake\s+fluid[:\s]+([^\n.]{3,40})/i,
+      /aceite\s+de\s+motor[:\s]+([^\n.]{3,60})/i,
+      /motor\s+oil[:\s]+([^\n.]{3,60})/i,
+      /(\d+\.?\d*)\s*L\s+SAE/i,
     ],
   },
   {
@@ -132,10 +64,46 @@ const MANUAL_FIELDS: ManualField[] = [
     placeholder: "2.1L GL-4 75W-90",
     category: "fluidos",
     patterns: [
+      /GL-4\s+75W-90/i,
       /transmisi[oó]n\s+manual[:\s]+([^\n.]{3,60})/i,
-      /(\d+\.?\d*)\s*L\s+GL-[345]\s+\d+[WR]-\d+/i,
-      /aceite\s+de\s+(?:caja|transmisi[oó]n)[:\s]+([^\n.]{3,60})/i,
       /GL-[345]\s+\d+[WR]-\d+/i,
+    ],
+  },
+  {
+    key: "refrigerante",
+    label: "Refrigerante",
+    icon: "❄️",
+    placeholder: "6.5L orgánico OAT",
+    category: "fluidos",
+    patterns: [
+      /refrigerante[:\s]+([^\n.]{3,60})/i,
+      /OAT/i,
+      /coolant[:\s]+([^\n.]{3,60})/i,
+    ],
+  },
+  {
+    key: "liquidoFrenos",
+    label: "Líquido de Frenos",
+    icon: "🛑",
+    placeholder: "DOT 4",
+    category: "frenos",
+    patterns: [
+      /DOT\s*4/i,
+      /l[ií]quido\s+de\s+frenos/i,
+      /brake\s+fluid/i,
+    ],
+  },
+  {
+    key: "tipoCombustible",
+    label: "Combustible",
+    icon: "⛽",
+    placeholder: "55L / 93 octanos",
+    category: "fluidos",
+    patterns: [
+      /(\d+)\s+octanos?/i,
+      /RON\s*(\d+)/i,
+      /gasolina/i,
+      /fuel/i,
     ],
   },
   {
@@ -145,9 +113,24 @@ const MANUAL_FIELDS: ManualField[] = [
     placeholder: "55 litros",
     category: "fluidos",
     patterns: [
-      /(\d+)\s*(?:litros?|L)\s*(?:de\s+)?(?:bencina|gasolina|estanque)/i,
-      /estanque[:\s]+(\d+\s*(?:litros?|L))/i,
-      /capacidad\s+(?:del\s+)?(?:estanque|tanque)[:\s]+(\d+\s*(?:litros?|L))/i,
+      /(\d+)\s*L\s+(?:fuel|gasolina|bencina)/i,
+      /fuel\s+tank[:\s]+(\d+)/i,
+      /tank[:\s]+(\d+)/i,
+    ],
+  },
+  {
+    key: "bujias",
+    label: "Bujías",
+    icon: "⚡",
+    placeholder: "Iridio/Platino, 0.85mm",
+    category: "encendido",
+    patterns: [
+      /chispa\s+plug/i,
+      /spark\s+plug/i,
+      /buj[ií]a/i,
+      /NGK/i,
+      /iridio/i,
+      /platino/i,
     ],
   },
   {
@@ -157,36 +140,22 @@ const MANUAL_FIELDS: ManualField[] = [
     placeholder: "Rueda: 110-120 Nm",
     category: "frenos",
     patterns: [
-      /par(?:es)?\s+de\s+apriete\s+de\s+rueda[:\s]+([^\n.]{3,40})/i,
-      /(\d+\.?\d*)\s*[-–]\s*(\d+\.?\d*)\s*N\.?m/i,
-      /apriete\s+de\s+rueda[:\s]+([^\n.]{3,40})/i,
-      /torque[:\s]+([^\n.]{3,80})/i,
+      /(\d+)[-–](\d+)\s*Nm/i,
+      /torque/i,
+      /esfuerzo\s+de\s+torsion/i,
     ],
   },
   {
-    key: "peso",
-    label: "Peso en Vacío",
-    icon: "⚖️",
-    placeholder: "1,185 kg",
-    category: "motor",
+    key: "fusibles",
+    label: "Fusibles",
+    icon: "🔌",
+    placeholder: "Caja de fusibles del motor",
+    category: "diagnostico",
     patterns: [
-      /peso\s+(?:en\s+)?(?:vac[ií]o|seco)[:\s]+([^\n.]{3,40})/i,
-      /(\d[\d,.]+)\s*kg/i,
-      /curb\s+weight[:\s]+([^\n.]{3,40})/i,
+      /fusible/i,
+      /fuse/i,
     ],
   },
-  {
-    key: "dimensiones",
-    label: "Dimensiones",
-    icon: "📐",
-    placeholder: "Largo x Ancho x Alto",
-    category: "motor",
-    patterns: [
-      /dimensiones?[:\s]+([^\n.]{10,100})/i,
-      /(\d{4})\s*x\s*(\d{3,4})\s*x\s*(\d{3,4})\s*mm/i,
-    ],
-  },
-  // === CAMPOS NUEVOS ESPECÍFICOS MG 350 ===
   {
     key: "correaDistribucion",
     label: "Distribución",
@@ -194,9 +163,21 @@ const MANUAL_FIELDS: ManualField[] = [
     placeholder: "Cadena metálica",
     category: "mantencion",
     patterns: [
-      /cadena\s+de\s+distribuci[oó]n\s+met[aá]lica/i,
-      /distribuci[oó]n[:\s]+([^\n.]{3,60})/i,
-      /timing\s+(?:belt|chain)[:\s]+([^\n.]{3,60})/i,
+      /cadena\s+de\s+distribuci[oó]n/i,
+      /timing\s+chain/i,
+      /sincronizaci[oó]n\s+chain/i,
+    ],
+  },
+  {
+    key: "peso",
+    label: "Peso",
+    icon: "⚖️",
+    placeholder: "1,185 kg",
+    category: "motor",
+    patterns: [
+      /(\d[\d,.]+)\s*kg/i,
+      /peso/i,
+      /weight/i,
     ],
   },
 ];
@@ -212,59 +193,18 @@ interface InfoField {
 
 const INFO_FIELDS: InfoField[] = [
   {
-    key: "presionCompresion",
-    label: "Presión de Compresión",
-    icon: "📊",
-    category: "motor",
-    patterns: [
-      /presi[oó]n\s+de\s+compresi[oó]n[:\s]+([^\n.]{3,60})/i,
-      /(\d+\.?\d*)\s*[-–]\s*(\d+\.?\d*)\s*psi/i,
-      /compresi[oó]n[:\s]+([^\n.]{3,60})/i,
-    ],
-  },
-  {
-    key: "presionAceite",
-    label: "Presión de Aceite",
-    icon: "🛢️",
-    category: "motor",
-    patterns: [
-      /presi[oó]n\s+de\s+aceite[:\s]+([^\n.]{3,60})/i,
-      /rango[s]?\s+de\s+presi[oó]n\s+de\s+aceite/i,
-    ],
-  },
-  {
-    key: "temperaturasCriticas",
-    label: "Temperaturas Críticas",
-    icon: "🌡️",
-    category: "motor",
-    patterns: [
-      /temperaturas?\s+cr[ií]tica[s]?[:\s]+([^\n.]{3,80})/i,
-      /termostato[:\s]+([^\n.]{3,40})/i,
-      /electroventilador[:\s]+([^\n.]{3,40})/i,
-    ],
-  },
-  {
     key: "sensores",
     label: "Sensores",
     icon: "📡",
     category: "encendido",
     patterns: [
-      /sensores?\s+MAP[:\s]+([^\n.]{3,60})/i,
-      /sensor\s+IAT[:\s]+([^\n.]{3,60})/i,
-      /sondas?\s+Lambda[:\s]+([^\n.]{3,60})/i,
-      /sensor\s+CKP[:\s]+([^\n.]{3,60})/i,
-      /MAP\s*\/\s*IAT/i,
-    ],
-  },
-  {
-    key: "bobinas",
-    label: "Bobinas de Encendido",
-    icon: "⚡",
-    category: "encendido",
-    patterns: [
-      /bobinas?\s+independientes?\s*\(COP\)/i,
-      /COP\s*\(?\s*coil\s+on\s+plug\s*\)?/i,
-      /bobinas?[:\s]+([^\n.]{3,60})/i,
+      /sensor/i,
+      /MAP/i,
+      /IAT/i,
+      /Lambda/i,
+      /CKP/i,
+      /oxigeno/i,
+      /oxygen/i,
     ],
   },
   {
@@ -273,9 +213,11 @@ const INFO_FIELDS: InfoField[] = [
     icon: "🛑",
     category: "frenos",
     patterns: [
-      /discos?\s+delanteros?[:\s]*(\d+\.?\d*)\s*mm/i,
-      /discos?\s+traseros?[:\s]*(\d+\.?\d*)\s*mm/i,
-      /espesor(?:es)?\s+m[ií]nimo[s]?[:\s]+([^\n.]{3,60})/i,
+      /disc?o/i,
+      /front\s+disc/i,
+      /rear\s+disc/i,
+      /delantero/i,
+      /trasero/i,
     ],
   },
   {
@@ -284,8 +226,9 @@ const INFO_FIELDS: InfoField[] = [
     icon: "🛞",
     category: "frenos",
     patterns: [
-      /pastillas?[:\s]*(\d+\.?\d*)\s*mm/i,
-      /espesor\s+m[ií]nimo\s+de\s+pastillas/i,
+      /pad/i,
+      /pastilla/i,
+      /brake\s+pad/i,
     ],
   },
   {
@@ -294,21 +237,21 @@ const INFO_FIELDS: InfoField[] = [
     icon: "🛞",
     category: "frenos",
     patterns: [
-      /presi[oó]n\s+de\s+neum[aá]ticos?[:\s]+([^\n.]{3,40})/i,
-      /(\d+\.?\d*)\s*PSI/i,
-      /neum[aá]ticos?[:\s]+(\d+\.?\d*\s*PSI)/i,
+      /PSI/i,
+      /neumatico/i,
+      /tire/i,
+      /rueda/i,
     ],
   },
   {
     key: "codigosOBD2",
-    label: "Códigos OBD2 Frecuentes",
+    label: "Códigos OBD2",
     icon: "🔍",
     category: "diagnostico",
     patterns: [
-      /P0\d{3}\s*[-–]\s*P0\d{3}/gi,
-      /P0101|P0300|P0301|P0302|P0303|P0304|P0420/gi,
-      /c[oó]digos?\s+(?:frecuentes?|OBD)[:\s]+([^\n.]{3,100})/i,
-      /solucionario\s+r[aá]pido/i,
+      /P0\d{3}/i,
+      /OBD/i,
+      /diagnostico/i,
     ],
   },
 ];
