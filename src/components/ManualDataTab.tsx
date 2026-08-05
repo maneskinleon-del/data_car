@@ -113,9 +113,11 @@ const MANUAL_FIELDS: ManualField[] = [
     placeholder: "55 litros",
     category: "fluidos",
     patterns: [
-      /(\d+)\s*L\s+(?:fuel|gasolina|bencina)/i,
+      /(\d+)\s*L\s*(?:fuel|gasolina|bencina)/i,
       /fuel\s+tank[:\s]+(\d+)/i,
       /tank[:\s]+(\d+)/i,
+      /Dep[oó]sito\s+de\s+combustible[:\s]+(\d+)/i,
+      /(55|56)\s*L/i,
     ],
   },
   {
