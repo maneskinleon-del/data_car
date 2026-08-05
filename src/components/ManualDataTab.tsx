@@ -15,10 +15,9 @@ import {
 import * as pdfjsLib from "pdfjs-dist";
 import { VehicleSpecs } from "../types";
 
-// Configure PDF.js worker - use CDN for reliability
-// Local worker setup is complex with Vite, so CDN is more reliable
+// Configure PDF.js worker - use unpkg (cdnjs doesn't have v6.x)
 pdfjsLib.GlobalWorkerOptions.workerSrc = 
-  `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+  `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
 const MAX_PDF_SIZE = 50 * 1024 * 1024; // 50MB limit
 
