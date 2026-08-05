@@ -36,6 +36,7 @@ interface ManualField {
   patterns: RegExp[]; // Auto-detection patterns
 }
 
+// Patterns optimized for MG 350 manual content
 const MANUAL_FIELDS: ManualField[] = [
   {
     key: "aceiteMotor",
@@ -43,10 +44,13 @@ const MANUAL_FIELDS: ManualField[] = [
     icon: "🛢️",
     placeholder: "p. ej. SAE 5W-30 API SN Plus",
     patterns: [
-      /aceite\s+(?:de\s+)?motor[:\s]+([^\n.]{5,60})/i,
+      /aceite\s+(?:de\s+)?motor[:\s]+([^\n.]{3,80})/i,
+      /motor\s+(?:oil|aceite)[:\s]+([^\n.]{3,80})/i,
       /SAE\s+\d+[WR]-\d+/i,
       /API\s+[SLSPSN]+\s*(?:Plus|CF)?/i,
-      /oil\s+(?:type|spec|grade)[:\s]+([^\n.]{5,60})/i,
+      /oil\s+(?:type|spec|grade|capacity)[:\s]+([^\n.]{3,80})/i,
+      /capacidad\s+(?:de\s+)?(?:aceite|oil)[:\s]+([^\n.]{3,40})/i,
+      /\d+\.?\d*\s*(?:L|litros?)\s*(?:de\s+)?aceite/i,
     ],
   },
   {
@@ -55,9 +59,11 @@ const MANUAL_FIELDS: ManualField[] = [
     icon: "⚙️",
     placeholder: "p. ej. SAE 75W-90 GL-4",
     patterns: [
-      /aceite\s+(?:de\s+)?(?:caja|transmisi[oó]n)[:\s]+([^\n.]{5,60})/i,
-      /transmisi[oó]n\s+(?:fluid|oil|aceite)[:\s]+([^\n.]{5,60})/i,
+      /aceite\s+(?:de\s+)?(?:caja|transmisi[oó]n)[:\s]+([^\n.]{3,80})/i,
+      /transmisi[oó]n\s+(?:fluid|oil|aceite)[:\s]+([^\n.]{3,80})/i,
+      /de\s+transmisi[oó]n\s*(?:\(\d+\))?/i,
       /GL-[345]\s*/i,
+      /caja\s+(?:de\s+)?cambios[:\s]+([^\n.]{3,80})/i,
     ],
   },
   {
@@ -66,11 +72,12 @@ const MANUAL_FIELDS: ManualField[] = [
     icon: "⚡",
     placeholder: "p. ej. NGK BPR6ES, gap 0.8mm",
     patterns: [
-      /buj[ií]as?[:\s]+([^\n.]{5,60})/i,
-      /NGK\s+[A-Z0-9]{3,10}/i,
-      /DENSO\s+[A-Z0-9]{3,10}/i,
-      /champion\s+[A-Z0-9]{3,10}/i,
-      /spark\s+plug[s]?[:\s]+([^\n.]{5,60})/i,
+      /buj[ií]as?[:\s]+([^\n.]{3,80})/i,
+      /NGK\s+[A-Z0-9]{2,10}/i,
+      /DENSO\s+[A-Z0-9]{2,10}/i,
+      /champion\s+[A-Z0-9]{2,10}/i,
+      /spark\s+plug[s]?[:\s]+([^\n.]{3,80})/i,
+      /brecha[:\s]+(\d+\.?\d*\s*(?:mm|pulgadas?)?)/i,
       /gap[:\s]+(\d+\.?\d*\s*mm)/i,
     ],
   },
@@ -78,11 +85,13 @@ const MANUAL_FIELDS: ManualField[] = [
     key: "fusibles",
     label: "Fusibles",
     icon: "🔌",
-    placeholder: "p. ej. Caja 1: 10A (Limpiaparabrisas), 15A (Luces)",
+    placeholder: "p. ej. No.13 - Caja de fusibles del motor",
     patterns: [
-      /fusible[s]?[:\s]+([^\n]{10,100})/i,
+      /fusible[s]?[:\s]+([^\n]{5,150})/i,
+      /No\.\d+\s+(?:en\s+la\s+)?caja\s+de\s+fusibles/i,
       /\d+[A]\s*\([^)]*\)/gi,
-      /fuse\s+(?:box|panel)[:\s]+([^\n]{10,100})/i,
+      /fuse\s+(?:box|panel)[:\s]+([^\n]{5,150})/i,
+      /caja\s+de\s+fusibles[:\s]+([^\n]{5,150})/i,
     ],
   },
   {
@@ -91,10 +100,12 @@ const MANUAL_FIELDS: ManualField[] = [
     icon: "❄️",
     placeholder: "p. ej. Etilenglicol 50%",
     patterns: [
-      /refrigerante[:\s]+([^\n.]{5,60})/i,
-      /anticongelante[:\s]+([^\n.]{5,60})/i,
-      /coolant[:\s]+([^\n.]{5,60})/i,
+      /refrigerante[:\s]+([^\n.]{3,80})/i,
+      /anticongelante[:\s]+([^\n.]{3,80})/i,
+      /coolant[:\s]+([^\n.]{3,80})/i,
       /etilenglicol/i,
+      /vaciar\s+y\s+refill[:\s]*(\d+\.?\d*\s*(?:L|ml)?)/i,
+      /capacidad\s+(?:de\s+)?(?:refrigerante|coolant)[:\s]+([^\n.]{3,40})/i,
     ],
   },
   {
@@ -103,10 +114,12 @@ const MANUAL_FIELDS: ManualField[] = [
     icon: "⛽",
     placeholder: "p. ej. Gasolina 95 octanos",
     patterns: [
-      /(?:gasolina|gasolina|petrol|fuel)[:\s]+([^\n.]{5,40})/i,
+      /(?:gasolina|petrol|fuel|combustible)[:\s]+([^\n.]{3,60})/i,
       /\d{2,3}\s*octanos?/i,
       /RON\s*\d+/i,
       /AKI\s*\d+/i,
+      /tipo\s+de\s+(?:combustible|gasolina)[:\s]+([^\n.]{3,60})/i,
+      /capacidad\s+(?:del\s+)?(?:estanque|tanque)[:\s]+([^\n.]{3,40})/i,
     ],
   },
   {
@@ -115,9 +128,10 @@ const MANUAL_FIELDS: ManualField[] = [
     icon: "🛑",
     placeholder: "p. ej. DOT 4",
     patterns: [
-      /l[ií]quido\s+de\s+frenos?[:\s]+([^\n.]{3,30})/i,
-      /brake\s+fluid[:\s]+([^\n.]{3,30})/i,
+      /l[ií]quido\s+de\s+frenos?[:\s]+([^\n.]{3,40})/i,
+      /brake\s+fluid[:\s]+([^\n.]{3,40})/i,
       /DOT\s*[3456]/i,
+      /frenos?[:\s]+([^\n.]{3,40})/i,
     ],
   },
   {
@@ -126,41 +140,46 @@ const MANUAL_FIELDS: ManualField[] = [
     icon: "🔄",
     placeholder: "p. ej. Cambio cada 60,000 km",
     patterns: [
-      /correa\s+(?:de\s+)?distribuci[oó]n[:\s]+([^\n.]{5,60})/i,
-      /timing\s+belt[:\s]+([^\n.]{5,60})/i,
+      /correa\s+(?:de\s+)?distribuci[oó]n[:\s]+([^\n.]{3,80})/i,
+      /timing\s+belt[:\s]+([^\n.]{3,80})/i,
+      /distribuci[oó]n[:\s]+([^\n.]{3,80})/i,
     ],
   },
   {
     key: "capacidadEstanque",
     label: "Capacidad del Estanque",
     icon: "🪣",
-    placeholder: "p. ej. 45 litros",
+    placeholder: "p. ej. 55 L",
     patterns: [
-      /capacidad\s+(?:del\s+)?(?:estanque|tanque|combustible)[:\s]+([^\n.]{3,30})/i,
-      /fuel\s+tank[:\s]+([^\n.]{3,30})/i,
-      /\d+\.?\d*\s*(?:litros?|L\b)/i,
+      /capacidad\s+(?:del\s+)?(?:estanque|tanque|combustible)[:\s]+([^\n.]{3,40})/i,
+      /fuel\s+tank[:\s]+([^\n.]{3,40})/i,
+      /(\d+\.?\d*)\s*(?:L|litros?)\s*(?:de\s+)?(?:gasolina|combustible|estanque|tanque)/i,
+      /estanque[:\s]+(\d+\.?\d*\s*(?:L|litros?))/i,
     ],
   },
   {
     key: "torqueTornillos",
     label: "Torque de Tornillos",
     icon: "🔧",
-    placeholder: "p. ej. Tapa de válvulas: 12 Nm",
+    placeholder: "p. ej. 5-7 Nm",
     patterns: [
-      /torque[:\s]+([^\n.]{5,80})/i,
-      /apriete[:\s]+([^\n.]{5,80})/i,
-      /\d+\s*N\.?m/gi,
+      /torque[:\s]+([^\n.]{3,100})/i,
+      /apriete[:\s]+([^\n.]{3,100})/i,
+      /(\d+\.?\d*)\s*[-–]\s*(\d+\.?\d*)\s*N\.?m/gi,
+      /(\d+\.?\d*)\s*N\.?m/gi,
+      /perno[s]?\s*[:\-–]\s*([^\n.]{3,80})/i,
     ],
   },
   {
     key: "peso",
     label: "Peso en Vacío",
     icon: "⚖️",
-    placeholder: "p. ej. 1,185 kg",
+    placeholder: "p. ej. 1,500 kg",
     patterns: [
-      /peso\s+(?:en\s+)?(?:vac[ií]o|seco)[:\s]+([^\n.]{3,30})/i,
-      /curb\s+weight[:\s]+([^\n.]{3,30})/i,
-      /\d[\d,.]+\s*kg/i,
+      /peso\s+(?:en\s+)?(?:vac[ií]o|seco|bruto)[:\s]+([^\n.]{3,40})/i,
+      /curb\s+weight[:\s]+([^\n.]{3,40})/i,
+      /(\d[\d,.]*)\s*kg/i,
+      /peso[:\s]+(\d[\d,.]*\s*kg)/i,
     ],
   },
   {
@@ -169,9 +188,10 @@ const MANUAL_FIELDS: ManualField[] = [
     icon: "📐",
     placeholder: "p. ej. 4,510 x 1,780 x 1,490 mm",
     patterns: [
-      /dimensiones?[:\s]+([^\n.]{10,80})/i,
+      /dimensiones?[:\s]+([^\n.]{10,100})/i,
       /largo\s*x\s*ancho/i,
-      /\d{4}\s*x\s*\d{3,4}\s*x\s*\d{3,4}\s*mm/i,
+      /(\d{4})\s*x\s*(\d{3,4})\s*x\s*(\d{3,4})\s*mm/i,
+      /las\s+dimensiones/i,
     ],
   },
 ];
