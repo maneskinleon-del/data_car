@@ -15,8 +15,12 @@ import {
 import * as pdfjsLib from "pdfjs-dist";
 import { VehicleSpecs } from "../types";
 
-// Configure PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+// Configure PDF.js worker - use CDN for reliability
+// Local worker setup is complex with Vite, so CDN is more reliable
+pdfjsLib.GlobalWorkerOptions.workerSrc = 
+  `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+const MAX_PDF_SIZE = 50 * 1024 * 1024; // 50MB limit
 
 interface ManualDataTabProps {
   specs: VehicleSpecs;
@@ -200,24 +204,61 @@ export default function ManualDataTab({
     async (file: File) => {
       setLoading(true);
       try {
-        const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-        let fullText = "";
+        // Check file size
+        if (file.size > MAX_PDF_SIZE) {
+          const sizeMB = (file.size / (1024 * 1024)).toFixed(0);
+          triggerToast(`El archivo pesa ${sizeMB}MB. El máximo recomendado es 50MB. Intenta comprimir el PDF.`);
+          setLoading(false);
+          return;
+        }
 
-        for (let i = 1; i <= pdf.numPages; i++) {
-          const page = await pdf.getPage(i);
-          const textContent = await page.getTextContent();
-          const pageText = textContent.items.map((item: any) => item.str).join(" ");
-          fullText += pageText + "\n";
+        const arrayBuffer = await file.arrayBuffer();
+        
+        // Load PDF with error handling
+        let pdf;
+        try {
+          pdf = await pdfjsLib.getDocument({ data: arrayBuffer, verbosity: 0 }).promise;
+        } catch (loadError: any) {
+          console.error("PDF load error:", loadError);
+          if (loadError.message?.includes("Invalid PDF")) {
+            triggerToast("El archivo no es un PDF válido o está corrupto.");
+          } else if (loadError.message?.includes("password")) {
+            triggerToast("El PDF está protegido con contraseña. No se puede leer.");
+          } else {
+            triggerToast(`Error al abrir el PDF: ${loadError.message || "Formato no reconocido"}`);
+          }
+          setLoading(false);
+          return;
+        }
+
+        let fullText = "";
+        let totalPages = pdf.numPages;
+        
+        // Process pages with individual error handling
+        for (let i = 1; i <= totalPages; i++) {
+          try {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items.map((item: any) => item.str).join(" ");
+            fullText += pageText + "\n";
+          } catch (pageError) {
+            console.warn(`Error en página ${i}:`, pageError);
+            // Continue with other pages
+          }
+        }
+
+        if (fullText.trim().length === 0) {
+          triggerToast("El PDF no contiene texto extraíble. Puede ser un PDF escaneado (imágenes). Ingresa los datos manualmente.");
+        } else {
+          triggerToast(`Manual "${file.name}" cargado. ${fullText.length.toLocaleString()} caracteres extraídos de ${totalPages} páginas.`);
         }
 
         setPdfText(fullText);
         setPdfName(file.name);
         onUpdateSpecs({ manualPdfNombre: file.name });
-        triggerToast(`Manual "${file.name}" cargado. ${fullText.length.toLocaleString()} caracteres extraídos.`);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error extracting PDF:", error);
-        triggerToast("Error al leer el PDF. Asegúrate de que sea un archivo válido.");
+        triggerToast(`Error inesperado: ${error.message || "No se pudo procesar el PDF"}`);
       } finally {
         setLoading(false);
       }
@@ -234,6 +275,8 @@ export default function ManualDataTab({
       return;
     }
     extractTextFromPdf(file);
+    // Reset input so same file can be re-uploaded
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   // Auto-detect values from PDF text
