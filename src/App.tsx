@@ -15,7 +15,7 @@ import SpecForm from "./components/SpecForm";
 import HistoryList from "./components/HistoryList";
 import MaintenanceModal from "./components/MaintenanceModal";
 import DocumentsTab from "./components/DocumentsTab";
-import ManualDataTab from "./components/ManualDataTab";
+import TechnicalDatabaseTab from "./components/TechnicalDatabase";
 
 import { VehicleSpecs, ServiceRecord } from "./types";
 
@@ -272,9 +272,9 @@ export default function App() {
         {/* TAB 3: DOCUMENTOS (SOAP, Revisión Técnica, Licencia...) */}
         {activeTab === "documents" && <DocumentsTab triggerToast={triggerToast} />}
 
-        {/* TAB 4: DATOS DEL MANUAL */}
+        {/* TAB 4: BASE TÉCNICA */}
         {activeTab === "manual" && (
-          <ManualDataTab
+          <TechnicalDatabaseTab
             specs={specs}
             onUpdateSpecs={(updated) => setSpecs((prev) => ({ ...prev, ...updated }))}
             triggerToast={triggerToast}
