@@ -12,6 +12,9 @@ import {
   Link2,
 } from "lucide-react";
 import * as pdfjsLib from "pdfjs-dist";
+// Worker de pdf.js empaquetado LOCALMENTE por Vite (?url) en vez de cargarlo
+// desde CDN (unpkg): el CDN falla con red restringida / CORS / offline.
+import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { VehicleSpecs } from "../types";
 import {
   VehicleTechnicalDatabase,
@@ -28,8 +31,7 @@ import {
 } from "../lib/technicalExtractor";
 import { applySpecsSync } from "../lib/specsSync";
 
-pdfjsLib.GlobalWorkerOptions.workerSrc =
-  `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 const MAX_PDF_SIZE = 50 * 1024 * 1024;
 

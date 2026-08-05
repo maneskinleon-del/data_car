@@ -174,11 +174,16 @@ export const EXTRACTION_RULES: ExtractionRule[] = [
     system: "fluidos",
     componentName: "Estanque de Combustible",
     icon: "⛽",
-    sectionKeywords: [/combustible|fuel/i],
-    fieldKeywords: [/estanque|dep[oó]sito|fuel\s+tank/i],
+    sectionKeywords: [/combustible|fuel|gasolina/i],
+    fieldKeywords: [
+      /estanque|dep[oó]sito|fuel\s+tank/i,
+      /gasolina\s+sin\s+plomo/i, // p.75: "gasolina sin plomo Número 93RON o superior"
+      /sin\s+plomo/i,
+    ],
     valuePatterns: [
       { pattern: /(\d{2,3})\s*[Ll]/, groupName: "capacity" },
-      { pattern: /(\d{2,3})\s*RON/, groupName: "octane" },
+      // "93RON" sin espacio entre número y RON (text-layer del manual)
+      { pattern: /(\d{2,3})\s*RON/i, groupName: "octane" },
     ],
     unitHint: "capacidad + octanaje",
     required: true,
@@ -681,6 +686,7 @@ export class TechnicalExtractor {
               case "range": component.pressure = dataPoint; break;
               case "clearance": component.gap = dataPoint; break;
               case "ratio": component.specification = dataPoint; break;
+              case "octane": component.specification = dataPoint; break;
               default: component.specification = dataPoint;
             }
           }

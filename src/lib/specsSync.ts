@@ -124,11 +124,13 @@ export function buildSpecsSync(db: VehicleTechnicalDatabase): Partial<VehicleSpe
     if (v) sync.dimensionNeumaticos = v;
   }
 
-  // Estanque: capacidad (ej: "45 L")
+  // Estanque: capacidad (ej: "45 L") + octanaje (ej: "93 RON")
   const fuelTank = findComponent(db, "fluidos", "fuel_tank");
   if (fuelTank) {
     const v = val(fuelTank.capacity);
     if (v) sync.capacidadEstanque = v;
+    const o = val(fuelTank.specification);
+    if (o) sync.tipoCombustible = o;
   }
 
   // Torque de rueda: apriete de tornillos (ej: "115-130 Nm")
