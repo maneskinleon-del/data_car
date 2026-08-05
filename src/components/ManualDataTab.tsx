@@ -4,18 +4,11 @@ import {
   Search,
   FileText,
   CheckCircle2,
-  AlertCircle,
   Loader2,
   ChevronDown,
   ChevronUp,
   Trash2,
   Zap,
-  Gauge,
-  Droplets,
-  Zap as ZapIcon,
-  Disc,
-  Wrench,
-  AlertTriangle,
 } from "lucide-react";
 import * as pdfjsLib from "pdfjs-dist";
 import { VehicleSpecs } from "../types";
@@ -183,7 +176,7 @@ const MANUAL_FIELDS: ManualField[] = [
   },
 ];
 
-// Additional informational fields (not in VehicleSpecs, displayed as reference)
+// Additional informational fields
 interface InfoField {
   key: string;
   label: string;
@@ -198,64 +191,46 @@ const INFO_FIELDS: InfoField[] = [
     label: "Sensores",
     icon: "📡",
     category: "encendido",
-    patterns: [
-      /sensor/i,
-      /MAP/i,
-      /IAT/i,
-      /Lambda/i,
-      /CKP/i,
-      /oxigeno/i,
-      /oxygen/i,
-    ],
+    patterns: [/sensor/i, /MAP/i, /IAT/i, /Lambda/i, /CKP/i],
   },
   {
     key: "discosFrenos",
     label: "Discos de Frenos",
     icon: "🛑",
     category: "frenos",
-    patterns: [
-      /disc?o/i,
-      /front\s+disc/i,
-      /rear\s+disc/i,
-      /delantero/i,
-      /trasero/i,
-    ],
+    patterns: [/disc?o/i, /front\s+disc/i, /rear\s+disc/i],
   },
   {
     key: "pastillasFrenos",
     label: "Pastillas de Frenos",
     icon: "🛞",
     category: "frenos",
-    patterns: [
-      /pad/i,
-      /pastilla/i,
-      /brake\s+pad/i,
-    ],
+    patterns: [/pad/i, /pastilla/i, /brake\s+pad/i],
   },
   {
     key: "presionNeumaticos",
     label: "Presión de Neumáticos",
     icon: "🛞",
     category: "frenos",
-    patterns: [
-      /PSI/i,
-      /neumatico/i,
-      /tire/i,
-      /rueda/i,
-    ],
+    patterns: [/PSI/i, /neumatico/i, /tire/i, /rueda/i],
   },
   {
     key: "codigosOBD2",
     label: "Códigos OBD2",
     icon: "🔍",
     category: "diagnostico",
-    patterns: [
-      /P0\d{3}/i,
-      /OBD/i,
-      /diagnostico/i,
-    ],
+    patterns: [/P0\d{3}/i, /OBD/i, /diagnostico/i],
   },
 ];
+
+const CATEGORY_CONFIG: Record<string, { label: string; color: string; gradient: string }> = {
+  motor: { label: "Motor", color: "#FF3D00", gradient: "from-orange-500 to-red-500" },
+  fluidos: { label: "Fluidos", color: "#2196F3", gradient: "from-blue-500 to-cyan-500" },
+  encendido: { label: "Encendido", color: "#FFC107", gradient: "from-yellow-500 to-orange-500" },
+  frenos: { label: "Frenos", color: "#F44336", gradient: "from-red-500 to-pink-500" },
+  mantencion: { label: "Mantenimiento", color: "#4CAF50", gradient: "from-green-500 to-emerald-500" },
+  diagnostico: { label: "Diagnóstico", color: "#9C27B0", gradient: "from-purple-500 to-violet-500" },
+};
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -263,14 +238,86 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-const CATEGORY_LABELS: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  motor: { label: "Motor", icon: <Gauge className="w-4 h-4" />, color: "#FF3D00" },
-  fluidos: { label: "Fluidos y Capacidades", icon: <Droplets className="w-4 h-4" />, color: "#2196F3" },
-  encendido: { label: "Encendido y Sensores", icon: <ZapIcon className="w-4 h-4" />, color: "#FFC107" },
-  frenos: { label: "Frenos y Chasis", icon: <Disc className="w-4 h-4" />, color: "#F44336" },
-  mantencion: { label: "Mantenimiento", icon: <Wrench className="w-4 h-4" />, color: "#4CAF50" },
-  diagnostico: { label: "Diagnósticos OBD2", icon: <AlertTriangle className="w-4 h-4" />, color: "#9C27B0" },
-};
+// Ficha Técnica Card Component
+function FichaTecnicaCard({ specs, autoExtracted }: { specs: VehicleSpecs; autoExtracted: Set<string> }) {
+  const ficha = [
+    { label: "Aceite Motor", value: specs.aceiteMotor, icon: "🛢️", color: "#FF3D00" },
+    { label: "Aceite Caja", value: specs.aceiteCaja, icon: "⚙️", color: "#2196F3" },
+    { label: "Refrigerante", value: specs.refrigerante, icon: "❄️", color: "#00BCD4" },
+    { label: "Frenos", value: specs.liquidoFrenos, icon: "🛑", color: "#F44336" },
+    { label: "Combustible", value: specs.tipoCombustible, icon: "⛽", color: "#FF9800" },
+    { label: "Estanque", value: specs.capacidadEstanque, icon: "🪣", color: "#4CAF50" },
+  ];
+
+  const detectedCount = ficha.filter(f => f.value).length;
+
+  return (
+    <div className="glass-panel rounded-xl border border-white/10 overflow-hidden">
+      {/* Header */}
+      <div className="p-4 border-b border-white/10 bg-gradient-to-r from-[#FF3D00]/10 to-transparent">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-[#FF3D00]/20 flex items-center justify-center">
+              <span className="text-xl">📋</span>
+            </div>
+            <div>
+              <h3 className="font-display font-bold text-white text-sm">FICHA TÉCNICA MG 350</h3>
+              <p className="font-mono text-[9px] text-white/40 uppercase tracking-wider">
+                Datos extraídos del manual
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[10px] text-emerald-400 font-bold">
+              {detectedCount}/{ficha.length}
+            </span>
+            <div className="w-16 h-2 bg-white/10 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-500"
+                style={{ width: `${(detectedCount / ficha.length) * 100}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Data Grid */}
+      <div className="p-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {ficha.map((item) => (
+          <div 
+            key={item.label}
+            className={`relative p-3 rounded-lg border transition-all ${
+              item.value 
+                ? 'bg-white/5 border-white/10 hover:border-white/20' 
+                : 'bg-white/2 border-white/5'
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-lg">{item.icon}</span>
+              <span className="font-mono text-[8px] text-white/40 uppercase tracking-wider">
+                {item.label}
+              </span>
+            </div>
+            {item.value ? (
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-sm text-white font-bold truncate">
+                  {item.value}
+                </span>
+                {autoExtracted.has(item.label.toLowerCase().replace(/\s/g, '')) && (
+                  <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 font-mono text-[7px] rounded">
+                    AUTO
+                  </span>
+                )}
+              </div>
+            ) : (
+              <span className="font-mono text-[10px] text-white/20">—</span>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function ManualDataTab({
   specs,
@@ -361,7 +408,6 @@ export default function ManualDataTab({
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // Auto-detect values from PDF text
   const handleAutoExtract = () => {
     if (!pdfText) {
       triggerToast("Primero carga un manual PDF.");
@@ -372,7 +418,6 @@ export default function ManualDataTab({
     const updates: Partial<VehicleSpecs> = {};
     const newInfoFields: Record<string, string> = {};
 
-    // Extract VehicleSpecs fields
     for (const field of MANUAL_FIELDS) {
       for (const pattern of field.patterns) {
         const match = pdfText.match(pattern);
@@ -387,7 +432,6 @@ export default function ManualDataTab({
       }
     }
 
-    // Extract informational fields
     for (const field of INFO_FIELDS) {
       for (const pattern of field.patterns) {
         const match = pdfText.match(pattern);
@@ -450,7 +494,6 @@ export default function ManualDataTab({
     triggerToast("Manual eliminado.");
   };
 
-  // Group fields by category
   const fieldsByCategory = MANUAL_FIELDS.reduce((acc, field) => {
     if (!acc[field.category]) acc[field.category] = [];
     acc[field.category].push(field);
@@ -462,6 +505,9 @@ export default function ManualDataTab({
     acc[field.category].push(field);
     return acc;
   }, {} as Record<string, InfoField[]>);
+
+  const detectedCount = MANUAL_FIELDS.filter((f) => specs[f.key]).length;
+  const totalCount = MANUAL_FIELDS.length;
 
   return (
     <div className="space-y-6 select-none">
@@ -535,6 +581,9 @@ export default function ManualDataTab({
         </div>
       )}
 
+      {/* Ficha Técnica Card - Always visible when PDF is loaded */}
+      {pdfText && <FichaTecnicaCard specs={specs} autoExtracted={autoExtracted} />}
+
       {/* Search */}
       {pdfText && (
         <div className="glass-panel p-5 rounded-xl border border-white/10">
@@ -580,11 +629,12 @@ export default function ManualDataTab({
 
       {/* Categories */}
       <div className="space-y-4">
-        {(Object.keys(CATEGORY_LABELS) as Array<keyof typeof CATEGORY_LABELS>).map((catKey) => {
-          const cat = CATEGORY_LABELS[catKey];
+        {(Object.keys(CATEGORY_CONFIG) as Array<keyof typeof CATEGORY_CONFIG>).map((catKey) => {
+          const cat = CATEGORY_CONFIG[catKey];
           const fields = fieldsByCategory[catKey] || [];
           const infos = infoByCategory[catKey] || [];
           const isExpanded = expandedSections.has(catKey);
+          const detectedInCategory = fields.filter(f => specs[f.key]).length;
 
           if (fields.length === 0 && infos.length === 0) return null;
 
@@ -596,14 +646,18 @@ export default function ManualDataTab({
                 className="w-full flex items-center justify-between p-4 hover:bg-white/2 transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded flex items-center justify-center" style={{ backgroundColor: `${cat.color}20` }}>
-                    <span style={{ color: cat.color }}>{cat.icon}</span>
+                  <div 
+                    className={`w-10 h-10 rounded-lg bg-gradient-to-br ${cat.gradient} flex items-center justify-center`}
+                  >
+                    <span className="text-white font-bold text-sm">
+                      {detectedInCategory}/{fields.length}
+                    </span>
                   </div>
                   <div className="text-left">
-                    <span className="font-mono text-[10px] text-white/50 uppercase font-bold tracking-widest block">
+                    <span className="font-mono text-xs text-white font-bold tracking-wider block">
                       {cat.label}
                     </span>
-                    <span className="font-mono text-[9px] text-white/30">
+                    <span className="font-mono text-[9px] text-white/40">
                       {fields.length + infos.length} campo(s)
                     </span>
                   </div>
@@ -619,59 +673,71 @@ export default function ManualDataTab({
 
               {/* Fields */}
               {isExpanded && (
-                <div className="px-4 pb-4 border-t border-white/5 pt-3 space-y-3">
-                  {/* Editable fields */}
+                <div className="px-4 pb-4 border-t border-white/5 pt-3 space-y-2">
                   {fields.map((field) => {
                     const value = specs[field.key] as string;
                     const wasAutoExtracted = autoExtracted.has(field.key);
 
                     return (
-                      <div key={field.key} className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm">{field.icon}</span>
-                          <span className="font-mono text-[9px] text-white/50 uppercase font-bold tracking-widest">
+                      <div 
+                        key={field.key} 
+                        className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
+                          value 
+                            ? 'bg-white/5 border-white/10' 
+                            : 'bg-white/2 border-white/5'
+                        }`}
+                      >
+                        <span className="text-lg">{field.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <span className="font-mono text-[9px] text-white/50 uppercase font-bold tracking-widest block">
                             {field.label}
                           </span>
-                          {wasAutoExtracted && (
-                            <span className="flex items-center gap-1 px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono text-[7px] font-bold uppercase rounded">
-                              <CheckCircle2 className="w-2.5 h-2.5" />
-                              AUTO
-                            </span>
-                          )}
+                          <input
+                            type="text"
+                            value={value}
+                            onChange={(e) => onUpdateSpecs({ [field.key]: e.target.value })}
+                            placeholder={field.placeholder}
+                            className="w-full bg-transparent font-mono text-xs text-white outline-none placeholder:text-white/20"
+                          />
                         </div>
-                        <input
-                          type="text"
-                          value={value}
-                          onChange={(e) => onUpdateSpecs({ [field.key]: e.target.value })}
-                          placeholder={field.placeholder}
-                          className="w-full input-field p-2.5 font-mono text-xs text-white rounded bg-black border border-white/10 outline-none"
-                        />
+                        {wasAutoExtracted && (
+                          <span className="flex items-center gap-1 px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono text-[8px] font-bold uppercase rounded shrink-0">
+                            <CheckCircle2 className="w-3 h-3" />
+                            AUTO
+                          </span>
+                        )}
                       </div>
                     );
                   })}
 
-                  {/* Info fields (read-only from PDF) */}
                   {infos.map((field) => {
                     const value = infoFields[field.key];
                     const wasAutoExtracted = autoExtracted.has(field.key);
 
                     return (
-                      <div key={field.key} className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm">{field.icon}</span>
-                          <span className="font-mono text-[9px] text-white/50 uppercase font-bold tracking-widest">
+                      <div 
+                        key={field.key} 
+                        className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
+                          value 
+                            ? 'bg-white/5 border-white/10' 
+                            : 'bg-white/2 border-white/5'
+                        }`}
+                      >
+                        <span className="text-lg">{field.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <span className="font-mono text-[9px] text-white/50 uppercase font-bold tracking-widest block">
                             {field.label}
                           </span>
-                          {wasAutoExtracted && (
-                            <span className="flex items-center gap-1 px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono text-[7px] font-bold uppercase rounded">
-                              <CheckCircle2 className="w-2.5 h-2.5" />
-                              AUTO
-                            </span>
-                          )}
+                          <span className="font-mono text-xs text-white/70">
+                            {value || <span className="text-white/30">No detectado</span>}
+                          </span>
                         </div>
-                        <div className="w-full p-2.5 font-mono text-xs text-white/70 rounded bg-white/5 border border-white/5">
-                          {value || <span className="text-white/30">No detectado - ingresa manualmente</span>}
-                        </div>
+                        {wasAutoExtracted && (
+                          <span className="flex items-center gap-1 px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono text-[8px] font-bold uppercase rounded shrink-0">
+                            <CheckCircle2 className="w-3 h-3" />
+                            AUTO
+                          </span>
+                        )}
                       </div>
                     );
                   })}
@@ -684,45 +750,26 @@ export default function ManualDataTab({
 
       {/* Summary */}
       <div className="glass-panel p-5 rounded-xl border border-white/10">
-        <div className="flex items-center gap-3 mb-3">
-          <AlertCircle className="w-4 h-4 text-[#FF8A00]" />
-          <span className="font-mono text-[10px] text-white/50 uppercase font-bold tracking-widest">
-            Resumen MG 350
-          </span>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#FF3D00] to-[#FF8A00] flex items-center justify-center">
+            <span className="text-white font-bold text-sm">
+              {detectedCount}/{totalCount}
+            </span>
+          </div>
+          <div>
+            <span className="font-mono text-xs text-white font-bold tracking-wider block">
+              Progreso de Extracción
+            </span>
+            <span className="font-mono text-[9px] text-white/40">
+              {detectedCount === totalCount ? "¡Completado!" : `${totalCount - detectedCount} campo(s) pendiente(s)`}
+            </span>
+          </div>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="text-center p-3 bg-white/2 rounded">
-            <div className="font-display text-2xl font-black text-[#FF3D00]">
-              {MANUAL_FIELDS.filter((f) => specs[f.key]).length + Object.keys(infoFields).length}
-            </div>
-            <div className="font-mono text-[9px] text-white/40 uppercase">
-              Detectados
-            </div>
-          </div>
-          <div className="text-center p-3 bg-white/2 rounded">
-            <div className="font-display text-2xl font-black text-white/40">
-              {MANUAL_FIELDS.filter((f) => !specs[f.key]).length + INFO_FIELDS.length - Object.keys(infoFields).length}
-            </div>
-            <div className="font-mono text-[9px] text-white/40 uppercase">
-              Pendientes
-            </div>
-          </div>
-          <div className="text-center p-3 bg-white/2 rounded">
-            <div className="font-display text-2xl font-black text-emerald-400">
-              {autoExtracted.size}
-            </div>
-            <div className="font-mono text-[9px] text-white/40 uppercase">
-              Auto-detectados
-            </div>
-          </div>
-          <div className="text-center p-3 bg-white/2 rounded">
-            <div className="font-display text-2xl font-black text-[#FF8A00]">
-              {MANUAL_FIELDS.length + INFO_FIELDS.length}
-            </div>
-            <div className="font-mono text-[9px] text-white/40 uppercase">
-              Total campos
-            </div>
-          </div>
+        <div className="w-full h-3 bg-white/10 rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-gradient-to-r from-[#FF3D00] to-[#FF8A00] rounded-full transition-all duration-500"
+            style={{ width: `${(detectedCount / totalCount) * 100}%` }}
+          />
         </div>
       </div>
     </div>
