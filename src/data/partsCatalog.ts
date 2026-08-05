@@ -65,10 +65,13 @@ export const PARTS_CATALOG: CatalogEntry[] = [
   },
 
   // ── Filtro de aire ────────────────────────────────────────────────────────
-  // El dueño midió el filtro real del capó: 26 × 9 cm (panel). La categoría
-  // MG 350 en Autodoc mezcla dos tipos (panel plano y cartucho cilíndrico);
-  // el C 2774 (26,8 × 10,8 cm) es el candidato de panel más cercano pero NO
-  // coincide con la medida exacta → sigue sin verificar.
+  // IMPORTANTE (discrepancia sin resolver): el dueño midió el filtro real del
+  // capó en 26 × 9 cm. TODOS los catálogos consultados para MG 350/Roewe 350
+  // declaran un filtro de ~18-19 cm de ancho (STP 30005099 = 377×180×35 mm;
+  // OEM SAIC 50016901 = 255×192×50 mm). Ninguna referencia coincide con la
+  // medida física → NINGUNA se marca verified por catálogo. La medida del
+  // dueño es la verdad de terreno (source user); las referencias de tienda se
+  // muestran como candidatas con su medida declarada y la advertencia.
   {
     componentId: "air_filter",
     parts: [
@@ -78,7 +81,25 @@ export const PARTS_CATALOG: CatalogEntry[] = [
         compatible: ["MG 350S 1.5 — filtro del capó, medido por el dueño"],
         source: "user",
         verified: true,
-        note: "Filtro de aire del capó (caja de aire): panel de 26 × 9 cm medido por el dueño. Referencia de marca aún por confirmar con esa medida.",
+        note: "Filtro de aire del capó (caja de aire): panel de 26 × 9 cm medido por el dueño. ⚠️ NINGÚN catálogo coincide con esta medida (todos declaran ~18-19 cm de ancho). Verifica el número impreso en el filtro actual o mide el marco completo (borde de goma incluido) antes de comprar.",
+      },
+      {
+        aftermarket: [
+          { brand: "STP", partNumber: "30005099" },
+        ],
+        compatible: ["MG 350 1.5 2011-2018 / MG 3 — según vendedores chilenos"],
+        source: "catalog",
+        verified: false,
+        note: "Referencia que se vende en CHILE para MG 350 1.5 (Lider.cl $11.100 CLP; ulti.cl; filtroshlc.net). Medidas declaradas por vendedores: 377 × 180 × 35 mm — NO coinciden con el filtro medido (26 × 9 cm). Antes de comprar, compara con tu filtro real.",
+      },
+      {
+        aftermarket: [
+          { brand: "SAIC OEM", partNumber: "50016901" },
+        ],
+        compatible: ["Roewe 350 1.5 / MG 5 1.5 (15S4U/15S4C)"],
+        source: "catalog",
+        verified: false,
+        note: "OEM SAIC del grupo 1.5L. Medidas declaradas: 255 × 192 × 50 mm (Unifil, Cautop) — NO coinciden con el filtro medido (26 × 9 cm).",
       },
       {
         aftermarket: [
@@ -89,7 +110,7 @@ export const PARTS_CATALOG: CatalogEntry[] = [
         compatible: ["Candidato panel plano ≈ 26,8 × 10,8 × 5,7 cm"],
         source: "equivalence",
         verified: false,
-        note: "SIN VERIFICAR: el filtro real medido por el dueño es 26 × 9 cm; el C 2774 es 26,8 × 10,8 cm (ancho distinto). Compara con tu filtro antes de comprar.",
+        note: "Candidato de catálogos europeos (Autodoc). Medidas: 26,8 × 10,8 cm — largo similar a la medida del dueño pero ancho distinto (10,8 vs 9 cm). No confirmado.",
       },
     ],
   },
