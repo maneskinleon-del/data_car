@@ -86,7 +86,8 @@ export interface PartInfo {
   compatible: string[];
   source: PartSource;
   provenance?: SourceRef;          // si vino del manual
-  verified: boolean;
+  verified: boolean;               // true → referencia confirmada; false → candidata
+  note?: string;                   // nota de verificación / origen / advertencia
 }
 
 export interface PartsCatalogProvider {

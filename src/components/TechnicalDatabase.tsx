@@ -21,10 +21,16 @@ import {
   TechnicalComponentV2,
   SpecField,
   SystemCategory,
+  PartInfo,
 } from "../types/technicalV2";
 import { extractDocumentLayout, DocumentLayout } from "../lib/pdfLayout";
 import { TechnicalExtractorV2 } from "../lib/technicalExtractorV2";
 import { applySpecsSyncV2 } from "../lib/specsSyncV2";
+import {
+  attachPartsCatalog,
+  getPartsFromDb,
+  lookupCatalogParts,
+} from "../lib/partsCatalogProvider";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
@@ -58,8 +64,80 @@ const VALIDATION_BADGE: Record<string, { text: string; cls: string }> = {
   invalid: { text: "INVÁLIDO", cls: "text-white/30" },
 };
 
+// Sección de catálogo (Fase 2): referencias externas al manual, con su nivel
+// de verificación. verified:true → ✓ comprable con confianza;
+// verified:false → ⚠️ candidata, verificar antes de comprar.
+function CatalogSection({ parts }: { parts: PartInfo[] }) {
+  if (parts.length === 0) return null;
+  return (
+    <div className="mt-3 pt-3 border-t border-white/10">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="font-mono text-[9px] text-cyan-400 uppercase tracking-widest font-bold">
+          Catálogo de repuestos
+        </span>
+        <span className="px-1.5 py-0.5 bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 font-mono text-[7px] rounded">
+          CATÁLOGO
+        </span>
+      </div>
+      <div className="space-y-2">
+        {parts.map((p, i) => (
+          <div
+            key={i}
+            className={`rounded-lg border p-2.5 ${
+              p.verified
+                ? "border-emerald-500/25 bg-emerald-500/5"
+                : "border-amber-500/25 bg-amber-500/5"
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-1.5">
+              {p.verified ? (
+                <span className="font-mono text-[8px] text-emerald-400">✓ VERIFICADO</span>
+              ) : (
+                <span className="font-mono text-[8px] text-amber-400">⚠️ SIN VERIFICAR</span>
+              )}
+              <span className="font-mono text-[8px] text-white/30">
+                {p.source === "equivalence" ? "equivalencia" : p.source}
+              </span>
+            </div>
+            {p.oem && (
+              <p className="font-mono text-[10px] text-white/90">
+                OEM <span className="text-cyan-300 font-bold">{p.oem}</span>
+              </p>
+            )}
+            <div className="grid grid-cols-1 gap-1 mt-1.5">
+              {p.aftermarket.map((a) => (
+                <div key={a.brand} className="flex items-center justify-between gap-2">
+                  <span className="font-mono text-[9px] text-white/50">{a.brand}</span>
+                  <span className="font-mono text-[10px] text-white font-bold">{a.partNumber}</span>
+                </div>
+              ))}
+            </div>
+            {p.compatible.length > 0 && (
+              <p className="font-mono text-[8px] text-white/40 mt-1.5">
+                Aplica a: {p.compatible.join(" · ")}
+              </p>
+            )}
+            {p.note && (
+              <p className="font-mono text-[8px] leading-relaxed mt-1.5 text-white/40">
+                {p.note}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // Card de componente V2 — muestra cada specField con estado, variante y trazabilidad
-function ComponentCardV2({ component }: { component: TechnicalComponentV2; key?: string }) {
+function ComponentCardV2({
+  component,
+  parts,
+}: {
+  component: TechnicalComponentV2;
+  parts?: PartInfo[];
+  key?: string;
+}) {
   const [expanded, setExpanded] = useState(false);
   const hasData = component.specFields.some((f) =>
     f.values.some((v) => v.status === "extracted" && !v.conflict)
@@ -97,6 +175,7 @@ function ComponentCardV2({ component }: { component: TechnicalComponentV2; key?:
               Sin especificaciones definidas para este componente.
             </p>
           )}
+          <CatalogSection parts={parts ?? []} />
         </div>
       )}
     </div>
@@ -182,6 +261,12 @@ function CoveragePanelV2({ database }: { database: VehicleTechnicalDatabaseV2 })
     return { system, comps, compsWithData, percent };
   });
 
+  // Piezas con referencia real (OEM o aftermarket); sin contar candidatas vacías
+  const catalogCount =
+    database.parts?.entries?.reduce(
+      (s, e) => s + e.parts.filter((p) => p.oem || p.aftermarket.length > 0).length,
+      0
+    ) ?? 0;
   const decisionPercent = c.totalSlots > 0 ? Math.round((c.decisionReady / c.totalSlots) * 100) : 0;
 
   return (
@@ -235,6 +320,10 @@ function CoveragePanelV2({ database }: { database: VehicleTechnicalDatabaseV2 })
         <div className="flex items-center justify-between mt-1">
           <span className="font-mono text-xs text-white/60">Decision-ready</span>
           <span className="font-mono text-sm text-cyan-400 font-bold">{c.decisionReady}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="font-mono text-xs text-white/60">Piezas en catálogo (F2)</span>
+          <span className="font-mono text-sm text-cyan-400 font-bold">{catalogCount}</span>
         </div>
         <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden mt-2">
           <div
@@ -312,10 +401,15 @@ function searchDatabaseV2(db: VehicleTechnicalDatabaseV2, query: string): Techni
   const results: TechnicalComponentV2[] = [];
   for (const comps of Object.values(db.components)) {
     for (const comp of comps) {
+      const catalogParts = lookupCatalogParts(comp.id)
+        .flatMap((p) => [p.oem, ...p.aftermarket.map((a) => `${a.brand} ${a.partNumber}`)])
+        .filter(Boolean)
+        .join(" ");
       const haystack = [
         comp.name,
         ...comp.specFields.flatMap((f) => f.values.map((v) => v.value)),
         ...comp.specFields.map((f) => f.label),
+        catalogParts,
       ].join(" ").toLowerCase();
       if (haystack.includes(q)) results.push(comp);
     }
@@ -360,6 +454,8 @@ export default function TechnicalDatabaseTab({
         if (saved) {
           const parsed = JSON.parse(saved) as VehicleTechnicalDatabaseV2;
           if (parsed.schemaVersion === 2 && parsed.extractionSource === specs.manualPdfNombre) {
+            // Refrescar el catálogo vigente en DBs persistidas de sesiones viejas
+            attachPartsCatalog(parsed);
             setDatabase(parsed);
             const { updates } = applySpecsSyncV2(specs, parsed, false);
             if (Object.keys(updates).length > 0) {
@@ -433,6 +529,8 @@ export default function TechnicalDatabaseTab({
     const extractor = new TechnicalExtractorV2(layoutRef.current, pdfName);
     const newDatabase = extractor.buildDatabase();
     newDatabase.extractionSource = pdfName;
+    // Fase 2: conectar el catálogo de repuestos (fuente externa, separada del manual)
+    attachPartsCatalog(newDatabase);
     setDatabase(newDatabase);
 
     const c = newDatabase.coverage;
@@ -620,7 +718,11 @@ export default function TechnicalDatabaseTab({
                 {searchResults.length} resultado(s):
               </p>
               {searchResults.map((comp) => (
-                <ComponentCardV2 key={comp.id} component={comp} />
+                <ComponentCardV2
+                  key={comp.id}
+                  component={comp}
+                  parts={getPartsFromDb(database, comp.id)}
+                />
               ))}
             </div>
           )}
@@ -677,7 +779,11 @@ export default function TechnicalDatabaseTab({
                   {isExpanded && (
                     <div className="px-4 pb-4 border-t border-white/5 pt-3 space-y-2">
                       {components.map((comp) => (
-                        <ComponentCardV2 key={comp.id} component={comp} />
+                        <ComponentCardV2
+                          key={comp.id}
+                          component={comp}
+                          parts={getPartsFromDb(database, comp.id)}
+                        />
                       ))}
                     </div>
                   )}

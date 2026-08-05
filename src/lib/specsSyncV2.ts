@@ -19,6 +19,7 @@ import {
   SpecField,
   SystemCategory,
 } from "../types/technicalV2";
+import { lookupVerifiedParts } from "./partsCatalogProvider";
 
 const MIN_FILL_CONFIDENCE = 0.5;
 
@@ -94,6 +95,7 @@ const FIELD_LABELS: Record<string, string> = {
   capacidadEstanque: "Estanque",
   tipoCombustible: "Combustible",
   torqueTornillos: "Torque tornillos",
+  filtroAceite: "Filtro aceite (catálogo)",
 };
 
 // ── Construcción del mapeo Base Técnica V2 → Ficha ─────────────────────────
@@ -172,6 +174,18 @@ export function buildSpecsSyncV2(
   if (wheelTorque) {
     const v = bestValue(findField(wheelTorque, "torque"))?.value;
     if (v) sync.torqueTornillos = v;
+  }
+
+  // Filtro de aceite — Fase 2 (CATÁLOGO, no manual): solo referencias
+  // VERIFICADAS se sincronizan. El aire/habitáculo son candidatos sin
+  // verificar → NUNCA llegan a la ficha (Prioridad 1: un dato incorrecto es
+  // peor que uno ausente).
+  const oilFilters = lookupVerifiedParts("oil_filter");
+  if (oilFilters.length > 0) {
+    const p = oilFilters[0];
+    const refs = p.aftermarket.map((a) => `${a.brand} ${a.partNumber}`);
+    const v = join(p.oem ? `OEM ${p.oem}` : null, ...refs.slice(0, 2));
+    if (v) sync.filtroAceite = v;
   }
 
   return sync;
