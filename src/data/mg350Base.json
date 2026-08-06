@@ -72,7 +72,7 @@
         ],
         "status": "extracted",
         "validationStatus": "plausible",
-        "lastUpdated": "2026-08-06T12:17:33.403Z",
+        "lastUpdated": "2026-08-06T20:29:07.109Z",
         "verified": false
       }
     ],
@@ -153,7 +153,7 @@
         ],
         "status": "extracted",
         "validationStatus": "verified",
-        "lastUpdated": "2026-08-06T12:17:33.121Z",
+        "lastUpdated": "2026-08-06T20:29:06.794Z",
         "verified": false
       },
       {
@@ -224,7 +224,7 @@
         ],
         "status": "extracted",
         "validationStatus": "verified",
-        "lastUpdated": "2026-08-06T12:17:33.221Z",
+        "lastUpdated": "2026-08-06T20:29:06.901Z",
         "verified": false
       },
       {
@@ -306,7 +306,7 @@
         ],
         "status": "extracted",
         "validationStatus": "verified",
-        "lastUpdated": "2026-08-06T12:17:33.264Z",
+        "lastUpdated": "2026-08-06T20:29:06.956Z",
         "verified": false
       },
       {
@@ -363,7 +363,7 @@
         ],
         "status": "extracted",
         "validationStatus": "verified",
-        "lastUpdated": "2026-08-06T12:17:33.302Z",
+        "lastUpdated": "2026-08-06T20:29:07.006Z",
         "verified": false
       }
     ],
@@ -445,7 +445,7 @@
         ],
         "status": "extracted",
         "validationStatus": "verified",
-        "lastUpdated": "2026-08-06T12:17:33.363Z",
+        "lastUpdated": "2026-08-06T20:29:07.071Z",
         "verified": false
       }
     ],
@@ -473,7 +473,7 @@
         ],
         "status": "not_published",
         "validationStatus": "plausible",
-        "lastUpdated": "2026-08-06T12:17:33.403Z",
+        "lastUpdated": "2026-08-06T20:29:07.109Z",
         "verified": false
       },
       {
@@ -499,7 +499,7 @@
         ],
         "status": "not_published",
         "validationStatus": "plausible",
-        "lastUpdated": "2026-08-06T12:17:33.403Z",
+        "lastUpdated": "2026-08-06T20:29:07.109Z",
         "verified": false
       },
       {
@@ -525,7 +525,7 @@
         ],
         "status": "not_published",
         "validationStatus": "plausible",
-        "lastUpdated": "2026-08-06T12:17:33.403Z",
+        "lastUpdated": "2026-08-06T20:29:07.109Z",
         "verified": false
       }
     ],
@@ -553,7 +553,7 @@
         ],
         "status": "not_published",
         "validationStatus": "plausible",
-        "lastUpdated": "2026-08-06T12:17:33.264Z",
+        "lastUpdated": "2026-08-06T20:29:06.956Z",
         "verified": false
       },
       {
@@ -579,7 +579,7 @@
         ],
         "status": "not_published",
         "validationStatus": "plausible",
-        "lastUpdated": "2026-08-06T12:17:33.264Z",
+        "lastUpdated": "2026-08-06T20:29:06.956Z",
         "verified": false
       }
     ],
@@ -689,7 +689,7 @@
         ],
         "status": "extracted",
         "validationStatus": "verified",
-        "lastUpdated": "2026-08-06T12:17:33.177Z",
+        "lastUpdated": "2026-08-06T20:29:06.851Z",
         "verified": false
       }
     ],
@@ -717,7 +717,7 @@
         ],
         "status": "not_published",
         "validationStatus": "plausible",
-        "lastUpdated": "2026-08-06T12:17:33.453Z",
+        "lastUpdated": "2026-08-06T20:29:07.166Z",
         "verified": false
       },
       {
@@ -757,7 +757,7 @@
         ],
         "status": "not_published",
         "validationStatus": "plausible",
-        "lastUpdated": "2026-08-06T12:17:33.453Z",
+        "lastUpdated": "2026-08-06T20:29:07.166Z",
         "verified": false
       }
     ],
@@ -794,7 +794,7 @@
         ],
         "status": "extracted",
         "validationStatus": "verified",
-        "lastUpdated": "2026-08-06T12:17:33.419Z",
+        "lastUpdated": "2026-08-06T20:29:07.127Z",
         "verified": false
       },
       {
@@ -851,7 +851,7 @@
         ],
         "status": "extracted",
         "validationStatus": "verified",
-        "lastUpdated": "2026-08-06T12:17:33.453Z",
+        "lastUpdated": "2026-08-06T20:29:07.166Z",
         "verified": false
       }
     ],
@@ -879,7 +879,7 @@
         ],
         "status": "not_published",
         "validationStatus": "plausible",
-        "lastUpdated": "2026-08-06T12:17:33.453Z",
+        "lastUpdated": "2026-08-06T20:29:07.166Z",
         "verified": false
       },
       {
@@ -905,7 +905,7 @@
         ],
         "status": "not_published",
         "validationStatus": "plausible",
-        "lastUpdated": "2026-08-06T12:17:33.453Z",
+        "lastUpdated": "2026-08-06T20:29:07.166Z",
         "verified": false
       }
     ]
@@ -1209,7 +1209,24 @@
         "componentId": "brake_pad_rear",
         "parts": [
           {
-            "oem": "10030811 (SAIC) · espesor 15 mm",
+            "oem": "10030811 (SAIC)",
+            "aftermarket": [
+              {
+                "brand": "FERODO",
+                "partNumber": "FDB1083"
+              }
+            ],
+            "compatible": [
+              "Roewe 350 1.5 (AP11, código C00L)",
+              "MG 350 1.5 (2011-2015)",
+              "MG 3 / MG 5 (misma pinza trasera SAIC)"
+            ],
+            "source": "equivalence",
+            "verified": true,
+            "note": "OEM SAIC 10030811 = Assy-Rear Brake Pad, confirmado en catálogos SAIC/EPC y por el cruce documentado Ferodo FDB1083 ↔ 10030811 (catálogo Ferodo/DRiV). Familia de pastilla trasera TRW/Lucas WVA 20960/20961 (~87×53 mm). El espesor real (15 vs 17 mm) varía según versión: verifica el número WVA y el espesor impresos en tus pastillas antes de comprar."
+          },
+          {
+            "oem": "10030811 (SAIC) · espesor 15 mm (el más común)",
             "aftermarket": [
               {
                 "brand": "BREMBO",
@@ -1220,21 +1237,17 @@
                 "partNumber": "GDB823"
               },
               {
-                "brand": "FERODO",
-                "partNumber": "FDB1083"
-              },
-              {
                 "brand": "DELPHI",
                 "partNumber": "LP2254"
               }
             ],
             "compatible": [
-              "Roewe 350 1.5 (AP11, código C00L)",
+              "Roewe 350 1.5 (AP11)",
               "MG 350 1.5 (2011-2015)"
             ],
             "source": "equivalence",
-            "verified": true,
-            "note": "Traseras 15 mm: OEM SAIC 10030811 confirmado por catálogos SAIC/EPC y cruce Spareto. Brembo P 85 017 en el catálogo oficial Brembo para Roewe 350 1.5. ⚠️ Verifica el espesor de tus pastillas actuales: si son 17 mm, usa la otra variante."
+            "verified": false,
+            "note": "Candidata 15 mm: MISMA familia de pastilla (WVA 20961, pinza trasera TRW/Lucas que comparte el grupo VW/Audi y PSA), por lo que FÍSICAMENTE calzan, pero las marcas NO las listan oficialmente para MG/Roewe 350 (Brembo P 85 017 se lista para Audi A4/VW Passat/Peugeot-Citroën). Verifica el WVA 20961 impreso antes de comprar."
           },
           {
             "oem": "10030811 (SAIC) · espesor 17 mm",
@@ -1253,8 +1266,8 @@
               "MG 350 1.5 (2011-2015)"
             ],
             "source": "equivalence",
-            "verified": true,
-            "note": "Traseras 17 mm: variante más gruesa del mismo OEM SAIC 10030811. ⚠️ Solo usa esta si tus pastillas actuales miden 17 mm; la mayoría usa 15 mm (P 85 017 / GDB823)."
+            "verified": false,
+            "note": "Variante más gruesa (17 mm) de la misma familia WVA 20961. ⚠️ Solo úsala si tus pastillas actuales miden 17 mm (la mayoría usa 15 mm). Mismo criterio que la candidata 15 mm: calzan por huella, pero no están listadas oficialmente para MG/Roewe."
           },
           {
             "aftermarket": [
@@ -1277,7 +1290,7 @@
   },
   "maintenanceSchedule": [],
   "diagnostics": [],
-  "lastExtracted": "2026-08-06T12:17:33.453Z",
+  "lastExtracted": "2026-08-06T20:29:07.166Z",
   "extractionSource": "mg350-manual-final.pdf",
   "coverage": {
     "totalSlots": 29,

@@ -62,7 +62,7 @@ Referencias externas al manual (Fase 2), conectadas a cada componente. Cada piez
 | Neumáticos | 1 (205/55 R16 · 2,1 bar) | — |
 | Batería | — | 1 (DIN L1) |
 | Pastillas delanteras | 1 (OEM 10026870 + TRW/Ferodo/Brembo/Delphi) | 1 (BOSCH) |
-| Pastillas traseras | 2 (variantes 15 / 17 mm) | 1 (BOSCH) |
+| Pastillas traseras | 1 (OEM 10030811 + Ferodo FDB1083 con cruce documentado) | 3 (Brembo/TRW/Delphi 15 mm · Brembo/TRW 17 mm · BOSCH) |
 
 ## Base precargada embebida (sin PDF)
 

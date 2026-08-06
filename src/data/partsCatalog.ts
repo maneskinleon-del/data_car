@@ -27,12 +27,17 @@
 //   • Batería (2026-08-06): grupo DIN L1 (50-54 Ah, 450-530 CCA EN,
 //     207×175×190 mm, positivo derecho) según catálogos de baterías para el
 //     MG 350 / Roewe 350 (plataforma SAIC AP11). SIN verificación por página
-//     con compatibilidad explícita → candidata (verified:false).
-//   • Pastillas de freno (2026-08-06): VERIFICADAS por catálogos europeos con
-//     compatibilidad explícita para MG 350 1.5 / Roewe 350 1.5 (AP11):
-//     delanteras OEM 10026870 → TRW GDB7832, Ferodo FDB4436, Brembo P 51 003,
-//     Delphi LP2695; traseras OEM 10030811 → Brembo P 85 017/P 85 020 (15/17
-//     mm), TRW GDB823/GDB1330, Ferodo FDB1083, Delphi LP2254.
+//     con compatibilidad explícita → candidata (verified:false).  //   • Pastillas de freno (2026-08-06): delanteras OEM 10026870 → TRW GDB7832,
+  //     Ferodo FDB4436, Brembo P 51 003, Delphi LP2695 (compatibilidad explícita
+  //     en catálogos europeos para MG 350 1.5 / Roewe 350 1.5 AP11).
+  //   • Pastillas TRASERAS (validación de mercado 2026-08-06): el OEM SAIC
+  //     10030811 es REAL (Assy-Rear Brake Pad en catálogos SAIC/EPC) y la
+  //     familia de pastilla es la TRW/Lucas WVA 20960/20961 (~87×53×15/17 mm),
+  //     la MISMA huella que usan pinzas traseras de VW/Audi y PSA. Pero las
+  //     marcas (Brembo, TRW, Delphi) NO listan oficialmente el MG/Roewe 350
+  //     para sus referencias (P 85 017, GDB823…): calzan físicamente por la
+  //     huella WVA pero son CANDIDATAS, no equivalencias verificadas. Única
+  //     equivalencia con cruce documentado al OEM: Ferodo FDB1083.
 // ============================================================================
 
 import { PartInfo } from "../types/technicalV2";
@@ -316,29 +321,44 @@ export const PARTS_CATALOG: CatalogEntry[] = [
   },
 
   // ── Pastillas de freno TRASERAS ───────────────────────────────────────────
-  // El manual NO publica la referencia. VERIFICADA por catálogo Brembo
-  // oficial (P 85 017 listada para Roewe (SAIC) 350 1.5 eje trasero).
-  // OEM SAIC 10030811 confirmado en catálogos SAIC/EPC y cruces (Spareto).
+  // El manual NO publica la referencia. Validación de mercado (2026-08-06):
+  //   • OEM SAIC 10030811 = REAL (Assy-Rear Brake Pad, catálogos SAIC/EPC).
+  //   • Familia de pastilla = TRW/Lucas WVA 20960/20961, ~87×53×15/17 mm,
+  //     la MISMA huella que las pinzas traseras VW/Audi y PSA (por eso las
+  //     refs europeas calzan) — pero las marcas NO listan oficialmente el
+  //     MG/Roewe 350 para sus números → son CANDIDATAS (verified:false).
+  //   • Única equivalencia con cruce documentado al OEM: Ferodo FDB1083
+  //     (catálogo Ferodo/DRiV → 10030811) → verified:true.
   {
     componentId: "brake_pad_rear",
     parts: [
       {
-        // Variante 15 mm — la más común según catálogo Brembo oficial
-        // (P 85 017 listada para Roewe 350 1.5, pinza Lucas, 87 × 53 × 15 mm).
-        oem: "10030811 (SAIC) · espesor 15 mm",
+        // Ancla VERIFICADA: OEM real + equivalencia con cruce documentado.
+        oem: "10030811 (SAIC)",
+        aftermarket: [
+          { brand: "FERODO", partNumber: "FDB1083" },
+        ],
+        compatible: ["Roewe 350 1.5 (AP11, código C00L)", "MG 350 1.5 (2011-2015)", "MG 3 / MG 5 (misma pinza trasera SAIC)"],
+        source: "equivalence",
+        verified: true,
+        note: "OEM SAIC 10030811 = Assy-Rear Brake Pad, confirmado en catálogos SAIC/EPC y por el cruce documentado Ferodo FDB1083 ↔ 10030811 (catálogo Ferodo/DRiV). Familia de pastilla trasera TRW/Lucas WVA 20960/20961 (~87×53 mm). El espesor real (15 vs 17 mm) varía según versión: verifica el número WVA y el espesor impresos en tus pastillas antes de comprar.",
+      },
+      {
+        // Candidata 15 mm: calza por huella WVA 20961, pero las marcas NO la
+        // listan oficialmente para MG/Roewe (P 85 017 se lista para Audi/VW/PSA).
+        oem: "10030811 (SAIC) · espesor 15 mm (el más común)",
         aftermarket: [
           { brand: "BREMBO", partNumber: "P 85 017" },
           { brand: "TRW", partNumber: "GDB823" },
-          { brand: "FERODO", partNumber: "FDB1083" },
           { brand: "DELPHI", partNumber: "LP2254" },
         ],
-        compatible: ["Roewe 350 1.5 (AP11, código C00L)", "MG 350 1.5 (2011-2015)"],
+        compatible: ["Roewe 350 1.5 (AP11)", "MG 350 1.5 (2011-2015)"],
         source: "equivalence",
-        verified: true,
-        note: "Traseras 15 mm: OEM SAIC 10030811 confirmado por catálogos SAIC/EPC y cruce Spareto. Brembo P 85 017 en el catálogo oficial Brembo para Roewe 350 1.5. ⚠️ Verifica el espesor de tus pastillas actuales: si son 17 mm, usa la otra variante.",
+        verified: false,
+        note: "Candidata 15 mm: MISMA familia de pastilla (WVA 20961, pinza trasera TRW/Lucas que comparte el grupo VW/Audi y PSA), por lo que FÍSICAMENTE calzan, pero las marcas NO las listan oficialmente para MG/Roewe 350 (Brembo P 85 017 se lista para Audi A4/VW Passat/Peugeot-Citroën). Verifica el WVA 20961 impreso antes de comprar.",
       },
       {
-        // Variante 17 mm — pastillas más gruesas (misma pinza).
+        // Candidata 17 mm: variante más gruesa de la misma huella WVA 20961.
         oem: "10030811 (SAIC) · espesor 17 mm",
         aftermarket: [
           { brand: "BREMBO", partNumber: "P 85 020" },
@@ -346,8 +366,8 @@ export const PARTS_CATALOG: CatalogEntry[] = [
         ],
         compatible: ["Roewe 350 1.5 (AP11)", "MG 350 1.5 (2011-2015)"],
         source: "equivalence",
-        verified: true,
-        note: "Traseras 17 mm: variante más gruesa del mismo OEM SAIC 10030811. ⚠️ Solo usa esta si tus pastillas actuales miden 17 mm; la mayoría usa 15 mm (P 85 017 / GDB823).",
+        verified: false,
+        note: "Variante más gruesa (17 mm) de la misma familia WVA 20961. ⚠️ Solo úsala si tus pastillas actuales miden 17 mm (la mayoría usa 15 mm). Mismo criterio que la candidata 15 mm: calzan por huella, pero no están listadas oficialmente para MG/Roewe.",
       },
       {
         aftermarket: [
