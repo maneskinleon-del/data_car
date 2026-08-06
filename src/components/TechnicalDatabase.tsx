@@ -11,6 +11,8 @@ import {
   Info,
   Link2,
   Database,
+  Copy,
+  ExternalLink,
 } from "lucide-react";
 import * as pdfjsLib from "pdfjs-dist";
 // Worker de pdf.js empaquetado LOCALMENTE por Vite (?url) en vez de cargarlo
@@ -36,6 +38,7 @@ import {
   getPartsFromDb,
   lookupCatalogParts,
 } from "../lib/partsCatalogProvider";
+import { FUSES, getFusesByBox } from "../data/fuses";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
@@ -86,10 +89,84 @@ const PART_SIDE_LABEL: Record<string, string> = {
   passenger: "pasajero",
 };
 
+// Copia una referencia al portapapeles (con fallback para contextos sin
+// Clipboard API) y avisa con toast.
+function copyReference(ref: string, triggerToast: (msg: string) => void) {
+  const done = () => triggerToast(`COPIADO: ${ref}`);
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(ref).then(done).catch(() => {
+      fallbackCopy(ref);
+      done();
+    });
+  } else {
+    fallbackCopy(ref);
+    done();
+  }
+}
+
+function fallbackCopy(text: string) {
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.position = "fixed";
+  ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand("copy");
+  } catch (e) {
+    console.error(e);
+  }
+  document.body.removeChild(ta);
+}
+
+// Abre el buscador con la referencia (nueva pestaña).
+function searchReference(ref: string) {
+  window.open(`https://www.google.com/search?q=${encodeURIComponent(ref)}`, "_blank", "noopener");
+}
+
+// Botón compacto de acción para una referencia (copiar / buscar).
+// `ref` es lo que se copia (número puro); `searchQuery` es lo que se busca
+// (marca + número para resultados más precisos).
+function RefActions({
+  ref,
+  searchQuery,
+  triggerToast,
+}: {
+  ref: string;
+  searchQuery?: string;
+  triggerToast: (msg: string) => void;
+}) {
+  const q = searchQuery ?? ref;
+  return (
+    <span className="flex items-center gap-1 shrink-0">
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          copyReference(ref, triggerToast);
+        }}
+        title={`Copiar ${ref}`}
+        className="p-1 rounded bg-white/5 hover:bg-cyan-500/20 text-white/40 hover:text-cyan-300 transition-colors cursor-pointer"
+      >
+        <Copy className="w-3 h-3" />
+      </button>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          searchReference(q);
+        }}
+        title={`Buscar ${q}`}
+        className="p-1 rounded bg-white/5 hover:bg-cyan-500/20 text-white/40 hover:text-cyan-300 transition-colors cursor-pointer"
+      >
+        <ExternalLink className="w-3 h-3" />
+      </button>
+    </span>
+  );
+}
+
 // Sección de catálogo (Fase 2): referencias externas al manual, con su nivel
 // de verificación. verified:true → ✓ comprable con confianza;
 // verified:false → ⚠️ candidata, verificar antes de comprar.
-function CatalogSection({ parts }: { parts: PartInfo[] }) {
+function CatalogSection({ parts, triggerToast }: { parts: PartInfo[]; triggerToast: (msg: string) => void }) {
   if (parts.length === 0) return null;
   return (
     <div className="mt-3 pt-3 border-t border-white/10">
@@ -127,16 +204,20 @@ function CatalogSection({ parts }: { parts: PartInfo[] }) {
               )}
             </div>
             {p.oem && (
-              <p className="font-mono text-[10px] text-white/90">
-                {p.source === "user" ? "Instalado" : "OEM"}{" "}
-                <span className="text-cyan-300 font-bold">{p.oem}</span>
-              </p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-mono text-[10px] text-white/90">
+                  {p.source === "user" ? "Instalado" : "OEM"}{" "}
+                  <span className="text-cyan-300 font-bold">{p.oem}</span>
+                </p>
+                <RefActions ref={p.oem} triggerToast={triggerToast} />
+              </div>
             )}
             <div className="grid grid-cols-1 gap-1 mt-1.5">
               {p.aftermarket.map((a) => (
                 <div key={a.brand} className="flex items-center justify-between gap-2">
                   <span className="font-mono text-[9px] text-white/50">{a.brand}</span>
                   <span className="font-mono text-[10px] text-white font-bold">{a.partNumber}</span>
+                  <RefActions ref={a.partNumber} searchQuery={`${a.brand} ${a.partNumber}`} triggerToast={triggerToast} />
                 </div>
               ))}
             </div>
@@ -161,9 +242,11 @@ function CatalogSection({ parts }: { parts: PartInfo[] }) {
 function ComponentCardV2({
   component,
   parts,
+  triggerToast,
 }: {
   component: TechnicalComponentV2;
   parts?: PartInfo[];
+  triggerToast: (msg: string) => void;
   key?: string;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -203,7 +286,7 @@ function ComponentCardV2({
               Sin especificaciones definidas para este componente.
             </p>
           )}
-          <CatalogSection parts={parts ?? []} />
+          <CatalogSection parts={parts ?? []} triggerToast={triggerToast} />
         </div>
       )}
     </div>
@@ -416,6 +499,115 @@ function OBD2ReferenceSection() {
               <p className="font-mono text-[9px] text-white/40 mt-1">→ {item.accion}</p>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Fusibles y relés (referencia del manual de taller) ─────────────────────
+function FusesSection() {
+  const [expanded, setExpanded] = useState(false);
+  const engine = getFusesByBox("engine");
+  const cabin = getFusesByBox("cabin");
+
+  const boxCard = (boxId: "engine" | "cabin") => {
+    const entries = boxId === "engine" ? engine : cabin;
+    const isEngine = boxId === "engine";
+    return (
+      <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+        <div className="flex items-center gap-2 mb-2.5">
+          <div className={`w-7 h-7 rounded bg-gradient-to-br ${isEngine ? "from-amber-500 to-orange-600" : "from-orange-500 to-red-600"} flex items-center justify-center shrink-0`}>
+            <Zap className="w-3.5 h-3.5 text-white" />
+          </div>
+          <div>
+            <p className="font-mono text-[10px] text-white font-bold tracking-wider uppercase">
+              {isEngine ? "Caja del capó" : "Caja del habitáculo"}
+            </p>
+            <p className="font-mono text-[8px] text-white/40 uppercase tracking-wider">
+              {isEngine ? "Compartimiento del motor" : "Interior · lado pasajero"}
+            </p>
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          {entries.map((f) => (
+            <div key={f.id} className="flex items-center justify-between gap-2 py-1 px-1.5 rounded hover:bg-white/5">
+              <div className="flex items-center gap-2 min-w-0">
+                <span
+                  className={`px-1.5 py-0.5 rounded font-mono text-[9px] font-bold shrink-0 ${
+                    f.kind === "relay"
+                      ? "bg-cyan-500/10 border border-cyan-500/30 text-cyan-300"
+                      : "bg-amber-500/10 border border-amber-500/30 text-amber-300"
+                  }`}
+                >
+                  {f.id}
+                </span>
+                <span className="font-mono text-[9px] text-white/70 truncate">{f.circuit}</span>
+              </div>
+              <span className="flex items-center gap-1.5 shrink-0">
+                {f.amps && (
+                  <span className="px-1 py-0.5 bg-white/5 border border-white/10 text-white/50 font-mono text-[8px] rounded">
+                    {f.amps}
+                  </span>
+                )}
+                <span className="font-mono text-[8px] text-white/30">p.{f.page}</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="glass-panel rounded-xl border border-white/10 overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between p-4 hover:bg-white/2 transition-colors cursor-pointer"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
+            <span className="text-lg">⚡</span>
+          </div>
+          <div className="text-left">
+            <span className="font-mono text-xs text-white font-bold tracking-wider block">
+              Fusibles y relés
+            </span>
+            <span className="font-mono text-[9px] text-white/40">
+              Caja interior + capó — {FUSES.length} referencias del manual
+            </span>
+          </div>
+        </div>
+        {expanded ? (
+          <ChevronUp className="w-4 h-4 text-white/40" />
+        ) : (
+          <ChevronDown className="w-4 h-4 text-white/40" />
+        )}
+      </button>
+
+      {expanded && (
+        <div className="px-4 pb-4 border-t border-white/5 pt-3 space-y-3">
+          {/* Advertencia de seguridad */}
+          <div className="flex items-start gap-2.5 p-3 rounded-lg bg-red-500/5 border border-red-500/20">
+            <Info className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+            <p className="font-mono text-[9px] leading-relaxed text-white/60">
+              <span className="text-red-400 font-bold uppercase">Seguridad:</span> antes de tocar la caja de
+              fusibles, apaga el motor y desconecta el terminal negativo de la batería. Nunca reemplaces un
+              fusible por otro de mayor amperaje ni puentes con alambre: riesgo de incendio. Un fusible que se
+              quema repetidamente indica un cortocircuito, no lo "arregles" con uno más grande.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            {boxCard("engine")}
+            {boxCard("cabin")}
+          </div>
+
+          <p className="font-mono text-[8px] leading-relaxed text-white/30">
+            El manual de taller no publica una leyenda completa de la caja de fusibles: esta lista recopila las
+            referencias documentadas por sistema con su página de trazabilidad. Si un circuito no aparece,
+            revisa la tapa de la caja de tu vehículo (habitáculo: panel lado pasajero; capó: junto a la batería).
+          </p>
         </div>
       )}
     </div>
@@ -803,6 +995,7 @@ export default function TechnicalDatabaseTab({
                   key={comp.id}
                   component={comp}
                   parts={getPartsFromDb(database, comp.id)}
+                  triggerToast={triggerToast}
                 />
               ))}
             </div>
@@ -864,6 +1057,7 @@ export default function TechnicalDatabaseTab({
                           key={comp.id}
                           component={comp}
                           parts={getPartsFromDb(database, comp.id)}
+                          triggerToast={triggerToast}
                         />
                       ))}
                     </div>
@@ -875,9 +1069,12 @@ export default function TechnicalDatabaseTab({
         </div>
       )}
 
-      {/* OBD2 Reference — static, not extracted from manual */}
+      {/* Referencias estáticas: OBD2 + fusibles (extraídos del manual real) */}
       {database && (
-        <OBD2ReferenceSection />
+        <div className="space-y-4">
+          <OBD2ReferenceSection />
+          <FusesSection />
+        </div>
       )}
 
       {/* Empty state */}

@@ -4,7 +4,8 @@ App 100% local (sin backend, sin IA, sin servicios externos) para llevar el **MG
 
 - **Ficha técnica** del vehículo (aceite, filtros, neumáticos, iluminación, etc.)
 - **Base Técnica V2** (pestaña *Manual*): especificaciones extraídas del manual de taller real con trazabilidad por página y estados verificados (✓ extraído / ⚪ no encontrado / ⚠️ no publicado)
-- **Catálogo de repuestos**: referencias OEM y aftermarket con nivel de verificación, para comprar con confianza
+- **Catálogo de repuestos**: referencias OEM y aftermarket con nivel de verificación, para comprar con confianza — cada referencia tiene botones para **copiarla o buscarla directo en el buscador**
+- **Fusibles y relés** (pestaña *Manual*): cajas del capó y del habitáculo con las referencias documentadas del manual de taller, su circuito, página de trazabilidad y advertencias de seguridad para reemplazos en ruta
 - **Historial de mantenciones** con costo, fecha y kilometraje, editable y eliminable (con confirmación) desde la propia lista
 - **Planificador de mantenimiento** (pestaña *Servicio*): odómetro actual editable, km desde el último servicio y plan por tipo (aceite, mayor, alineación, eléctrica, otro) con intervalos configurables y alertas visuales (✓ al día / 🟠 próximo / 🔴 vencido)
 - **Respaldo local del historial**: exportar mantenciones como JSON o CSV (Excel) e importarlas de vuelta — la app sigue siendo 100% local, pero ya no dependes del navegador para no perder el registro
