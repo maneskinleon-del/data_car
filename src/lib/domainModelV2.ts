@@ -440,6 +440,20 @@ export const COMPONENT_DEFS: ComponentDef[] = [
         scope: "may-publish",
         transform: (r) => r.trim(),
       },
+      {
+        // Presión de los neumáticos — p.598 del manual ("Presión de los
+        // neumáticos - Normal: Frente 2,1 bar Posterior 2,1 bar"). Datos
+        // reales del manual; no confundir con la tapa del radiador (93-123 kPa).
+        id: "pressure",
+        label: "Presión",
+        concept: /presi[oó]n\s+de\s+(los\s+)?neum[aá]ticos|tire\s+pressure/i,
+        valuePattern: /(\d[.,]\d)\s*bar/,
+        unit: "bar",
+        plausibility: "tire_pressure",
+        scope: "may-publish",
+        exclude: [/radiador|tapa\s+del\s+radiador|kpa/i],
+        transform: (r) => r.trim(),
+      },
     ],
   },
   {
@@ -495,6 +509,35 @@ export const COMPONENT_DEFS: ComponentDef[] = [
         concept: /iluminaci[oó]n|faro|headlight/i,
         valuePattern: /H\d|LED|\d+\s*W/i,
         unit: "ref",
+        scope: "never-publishes",
+        transform: (r) => r.trim(),
+      },
+    ],
+  },
+  {
+    // Batería — el manual de taller NO publica su especificación (solo
+    // procedimientos de desconexión, p.49-58). El catálogo (Fase 2) la aporta:
+    // grupo DIN L1 (50-54 Ah, 450-530 CCA EN, 207×175×190 mm, R+).
+    id: "battery",
+    system: "electrico",
+    name: "Batería",
+    icon: "🔋",
+    slots: [
+      {
+        id: "capacity",
+        label: "Capacidad",
+        concept: /bater[ií]a|battery/i,
+        valuePattern: /(\d{2})\s*Ah/,
+        unit: "Ah",
+        scope: "never-publishes",
+        transform: (r) => r.trim(),
+      },
+      {
+        id: "group",
+        label: "Grupo / Medida",
+        concept: /bater[ií]a|battery|DIN|grupo/i,
+        valuePattern: /(DIN\s*L1|\d{3}\s*[×x]\s*\d{3}\s*[×x]\s*\d{3})/i,
+        unit: "grupo",
         scope: "never-publishes",
         transform: (r) => r.trim(),
       },

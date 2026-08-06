@@ -194,10 +194,12 @@ export function buildSpecsSyncV2(
     if (v) sync.bujias = v;
   }
 
-  // Neumáticos: medida
+  // Neumáticos: medida + presión (ej: "205/55 R16 · 2,1 bar")
   const tireSize = findComponent(db, "neumaticos", "tire_size");
   if (tireSize) {
-    const v = bestValue(findField(tireSize, "size"))?.value;
+    const size = bestValue(findField(tireSize, "size"))?.value;
+    const pressure = bestValue(findField(tireSize, "pressure"))?.value;
+    const v = join(size, pressure);
     if (v) sync.dimensionNeumaticos = v;
   }
 

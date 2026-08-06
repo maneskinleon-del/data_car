@@ -144,6 +144,26 @@ async function main() {
       expect: (v) => v.length === 1 && v[0] === "",
       description: "Filtro aceite → NO_PUBLICADO",
     },
+    {
+      component: "tire_size", slot: "size",
+      expect: (v) => hasValue(v, "205/55 R16"),
+      description: "Neumáticos → 205/55 R16 (p.598)",
+    },
+    {
+      component: "tire_size", slot: "pressure",
+      expect: (v) => v.some((x) => /2[.,]1/.test(x)),
+      description: "Presión neumáticos → 2,1 bar (p.598)",
+    },
+    {
+      component: "spark_plug", slot: "partNumber",
+      expect: (v) => hasValue(v, "NGK PFR6Y"),
+      description: "Bujía → NGK PFR6Y (p.243)",
+    },
+    {
+      component: "battery", slot: "capacity",
+      expect: (v) => v.length === 1 && v[0] === "",
+      description: "Batería → NO_PUBLICADO (manual no la publica)",
+    },
   ];
 
   // ── 3.5 Dump de TODOS los componentes extraídos (auditabilidad) ──
