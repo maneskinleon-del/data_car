@@ -164,6 +164,16 @@ async function main() {
       expect: (v) => v.length === 1 && v[0] === "",
       description: "Batería → NO_PUBLICADO (manual no la publica)",
     },
+    {
+      component: "brake_pad_front", slot: "partNumber",
+      expect: (v) => v.length === 1 && v[0] === "",
+      description: "Pastillas delanteras → NO_PUBLICADO (catálogo las aporta)",
+    },
+    {
+      component: "brake_pad_rear", slot: "partNumber",
+      expect: (v) => v.length === 1 && v[0] === "",
+      description: "Pastillas traseras → NO_PUBLICADO (catálogo las aporta)",
+    },
   ];
 
   // ── 3.5 Dump de TODOS los componentes extraídos (auditabilidad) ──
@@ -218,6 +228,43 @@ async function main() {
   console.log(`  notFound: ${db.coverage.notFound}`);
   console.log(`  notPublished: ${db.coverage.notPublished}`);
   console.log(`  decisionReady: ${db.coverage.decisionReady}`);
+
+  // ── 5.5 SEED JSON — la base PRECARGADA embebida debe estar al día con la
+  // extracción real (la app la usa en cualquier dispositivo sin el PDF). Si
+  // este test falla, hay que regenerarla: node scripts/build-base-json.mjs
+  // (con esbuild, ver el header del script).
+  console.log(`\n=== SEED JSON (mg350Base.json) ===`);
+  const seedRaw = fs.readFileSync("src/data/mg350Base.json", "utf8");
+  const seed = JSON.parse(seedRaw) as {
+    schemaVersion: number;
+    preloaded?: boolean;
+    components: Record<string, { id: string; specFields: { id: string; values: { status: string; value: string }[] }[] }[]>;
+    parts?: { entries: { componentId: string }[] };
+    coverage?: { extracted: number; notPublished: number; decisionReady: number };
+  };
+  check("Seed: schemaVersion 2", seed.schemaVersion === 2, `schemaVersion=${seed.schemaVersion}`);
+  check("Seed: marcada preloaded", seed.preloaded === true, `preloaded=${seed.preloaded}`);
+
+  const seedEngineOil = Object.values(seed.components)
+    .flat()
+    .find((c) => c.id === "engine_oil");
+  const seedVisc = seedEngineOil?.specFields.find((f) => f.id === "viscosity")?.values
+    .filter((v) => v.status === "extracted")
+    .map((v) => v.value)
+    .join(" ");
+  check("Seed: aceite 5W/40 embebido", !!seedVisc?.includes("5W/40"), `viscosity=${seedVisc ?? "(vacío)"}`);
+
+  const seedParts = seed.parts?.entries.map((e) => e.componentId) ?? [];
+  check(
+    "Seed: catálogo incluye pastillas y batería",
+    seedParts.includes("brake_pad_front") && seedParts.includes("battery") && seedParts.includes("spark_plug"),
+    `entradas=${seedParts.length} (${seedParts.join(", ")})`
+  );
+  check(
+    "Seed: cobertura igual a la extracción real",
+    seed.coverage?.extracted === db.coverage.extracted && seed.coverage?.decisionReady === db.coverage.decisionReady,
+    `seed=${seed.coverage?.extracted}/${seed.coverage?.decisionReady} vs real=${db.coverage.extracted}/${db.coverage.decisionReady}`
+  );
 
   console.log(`\n=== RESULTADO: ${passes} ✅ / ${failures} ❌ ===\n`);
   process.exit(failures > 0 ? 1 : 0);

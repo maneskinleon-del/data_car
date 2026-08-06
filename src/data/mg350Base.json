@@ -1,0 +1,1290 @@
+{
+  "schemaVersion": 2,
+  "vehicle": {
+    "transmission": "unknown"
+  },
+  "components": {
+    "motor": [
+      {
+        "id": "valve",
+        "system": "motor",
+        "name": "Válvulas",
+        "icon": "🔩",
+        "specFields": [
+          {
+            "id": "clearance",
+            "label": "Juego de Válvulas",
+            "values": [
+              {
+                "value": "0,20-0,28 mm",
+                "status": "extracted",
+                "validationStatus": "plausible",
+                "confidence": 0.65,
+                "conflict": false,
+                "source": {
+                  "document": "mg350-manual-final.pdf",
+                  "pages": [
+                    84
+                  ],
+                  "rawText": "0,20-0,28 mm"
+                }
+              }
+            ],
+            "dependsOnVariant": false,
+            "expectedUnit": "mm"
+          },
+          {
+            "id": "lift",
+            "label": "Levantamiento",
+            "values": [
+              {
+                "value": "7.7 mm",
+                "status": "extracted",
+                "validationStatus": "plausible",
+                "confidence": 0.65,
+                "conflict": false,
+                "source": {
+                  "document": "mg350-manual-final.pdf",
+                  "pages": [
+                    83
+                  ],
+                  "rawText": "7.7 mm"
+                }
+              },
+              {
+                "value": "8.2 mm",
+                "status": "extracted",
+                "validationStatus": "plausible",
+                "confidence": 0.65,
+                "conflict": false,
+                "source": {
+                  "document": "mg350-manual-final.pdf",
+                  "pages": [
+                    83
+                  ],
+                  "rawText": "8.2 mm"
+                }
+              }
+            ],
+            "dependsOnVariant": false,
+            "expectedUnit": "mm"
+          }
+        ],
+        "status": "extracted",
+        "validationStatus": "plausible",
+        "lastUpdated": "2026-08-06T12:17:33.403Z",
+        "verified": false
+      }
+    ],
+    "fluidos": [
+      {
+        "id": "engine_oil",
+        "system": "fluidos",
+        "name": "Aceite de Motor",
+        "icon": "🛢️",
+        "specFields": [
+          {
+            "id": "capacity",
+            "label": "Capacidad",
+            "values": [
+              {
+                "value": "4,5 l",
+                "status": "extracted",
+                "validationStatus": "verified",
+                "confidence": 1,
+                "conflict": false,
+                "source": {
+                  "document": "mg350-manual-final.pdf",
+                  "pages": [
+                    75
+                  ],
+                  "section": "Aceite del motor y del filtro",
+                  "rawText": "4,5 l"
+                }
+              }
+            ],
+            "dependsOnVariant": false,
+            "expectedUnit": "L"
+          },
+          {
+            "id": "viscosity",
+            "label": "Viscosidad",
+            "values": [
+              {
+                "value": "5W/40",
+                "status": "extracted",
+                "validationStatus": "plausible",
+                "confidence": 0.7,
+                "conflict": false,
+                "source": {
+                  "document": "mg350-manual-final.pdf",
+                  "pages": [
+                    76
+                  ],
+                  "rawText": "5W / 40"
+                }
+              }
+            ],
+            "dependsOnVariant": false,
+            "expectedUnit": "SAE"
+          },
+          {
+            "id": "grade",
+            "label": "Norma",
+            "values": [
+              {
+                "value": "ACEA A3/B3",
+                "status": "extracted",
+                "validationStatus": "plausible",
+                "confidence": 0.7,
+                "conflict": false,
+                "source": {
+                  "document": "mg350-manual-final.pdf",
+                  "pages": [
+                    76
+                  ],
+                  "rawText": "ACEA A3/B3"
+                }
+              }
+            ],
+            "dependsOnVariant": false,
+            "expectedUnit": "norma"
+          }
+        ],
+        "status": "extracted",
+        "validationStatus": "verified",
+        "lastUpdated": "2026-08-06T12:17:33.121Z",
+        "verified": false
+      },
+      {
+        "id": "coolant",
+        "system": "fluidos",
+        "name": "Refrigerante",
+        "icon": "❄️",
+        "specFields": [
+          {
+            "id": "capacity",
+            "label": "Capacidad",
+            "values": [
+              {
+                "value": "7.3 L",
+                "status": "extracted",
+                "validationStatus": "verified",
+                "confidence": 1,
+                "conflict": false,
+                "source": {
+                  "document": "mg350-manual-final.pdf",
+                  "pages": [
+                    75
+                  ],
+                  "section": "Sistema de refrigeración -",
+                  "rawText": "7.3 L"
+                }
+              }
+            ],
+            "dependsOnVariant": false,
+            "expectedUnit": "L"
+          },
+          {
+            "id": "type",
+            "label": "Tipo",
+            "values": [
+              {
+                "value": "etileno glicol",
+                "status": "extracted",
+                "validationStatus": "plausible",
+                "confidence": 0.7,
+                "conflict": false,
+                "source": {
+                  "document": "mg350-manual-final.pdf",
+                  "pages": [
+                    75
+                  ],
+                  "rawText": "etileno glicol"
+                }
+              },
+              {
+                "value": "OAT",
+                "status": "extracted",
+                "validationStatus": "plausible",
+                "confidence": 0.7,
+                "conflict": false,
+                "source": {
+                  "document": "mg350-manual-final.pdf",
+                  "pages": [
+                    75
+                  ],
+                  "rawText": "OAT"
+                }
+              }
+            ],
+            "dependsOnVariant": false,
+            "expectedUnit": "tipo"
+          }
+        ],
+        "status": "extracted",
+        "validationStatus": "verified",
+        "lastUpdated": "2026-08-06T12:17:33.221Z",
+        "verified": false
+      },
+      {
+        "id": "brake_fluid",
+        "system": "fluidos",
+        "name": "Líquido de Frenos",
+        "icon": "🛑",
+        "specFields": [
+          {
+            "id": "grade",
+            "label": "Grado",
+            "values": [
+              {
+                "value": "DOT4",
+                "status": "extracted",
+                "validationStatus": "plausible",
+                "confidence": 0.7,
+                "conflict": false,
+                "source": {
+                  "document": "mg350-manual-final.pdf",
+                  "pages": [
+                    75
+                  ],
+                  "rawText": "DOT4"
+                }
+              }
+            ],
+            "dependsOnVariant": false,
+            "expectedUnit": "DOT"
+          },
+          {
+            "id": "capacity",
+            "label": "Capacidad",
+            "values": [
+              {
+                "value": "0,75 L",
+                "status": "extracted",
+                "validationStatus": "verified",
+                "confidence": 1,
+                "variant": {
+                  "kind": "transmission",
+                  "id": "mt",
+                  "label": "Transmisión Manual (MT)"
+                },
+                "conflict": false,
+                "source": {
+                  "document": "mg350-manual-final.pdf",
+                  "pages": [
+                    75
+                  ],
+                  "section": "El fluido del sistema de frenos MT",
+                  "rawText": "0,75 L"
+                }
+              },
+              {
+                "value": "0,5 L",
+                "status": "extracted",
+                "validationStatus": "verified",
+                "confidence": 1,
+                "variant": {
+                  "kind": "transmission",
+                  "id": "at",
+                  "label": "Transmisión Automática (AT)"
+                },
+                "conflict": false,
+                "source": {
+                  "document": "mg350-manual-final.pdf",
+                  "pages": [
+                    75
+                  ],
+                  "section": "Líquido de frenos AT (relleno seco)",
+                  "rawText": "0,5 L"
+                }
+              }
+            ],
+            "dependsOnVariant": true,
+            "expectedUnit": "L"
+          }
+        ],
+        "status": "extracted",
+        "validationStatus": "verified",
+        "lastUpdated": "2026-08-06T12:17:33.264Z",
+        "verified": false
+      },
+      {
+        "id": "fuel_tank",
+        "system": "fluidos",
+        "name": "Estanque de Combustible",
+        "icon": "⛽",
+        "specFields": [
+          {
+            "id": "capacity",
+            "label": "Capacidad",
+            "values": [
+              {
+                "value": "55L",
+                "status": "extracted",
+                "validationStatus": "plausible",
+                "confidence": 0.6,
+                "conflict": false,
+                "source": {
+                  "document": "mg350-manual-final.pdf",
+                  "pages": [
+                    75
+                  ],
+                  "rawText": "55L"
+                }
+              }
+            ],
+            "dependsOnVariant": false,
+            "expectedUnit": "L"
+          },
+          {
+            "id": "octane",
+            "label": "Octanaje",
+            "values": [
+              {
+                "value": "93RON",
+                "status": "extracted",
+                "validationStatus": "verified",
+                "confidence": 1,
+                "conflict": false,
+                "source": {
+                  "document": "mg350-manual-final.pdf",
+                  "pages": [
+                    75
+                  ],
+                  "section": "Usar la alta calidad de la gasolina sin plomo Número",
+                  "rawText": "93RON"
+                }
+              }
+            ],
+            "dependsOnVariant": false,
+            "expectedUnit": "RON"
+          }
+        ],
+        "status": "extracted",
+        "validationStatus": "verified",
+        "lastUpdated": "2026-08-06T12:17:33.302Z",
+        "verified": false
+      }
+    ],
+    "encendido": [
+      {
+        "id": "spark_plug",
+        "system": "encendido",
+        "name": "Bujías",
+        "icon": "⚡",
+        "specFields": [
+          {
+            "id": "partNumber",
+            "label": "Referencia",
+            "values": [
+              {
+                "value": "NGK PFR6Y",
+                "status": "extracted",
+                "validationStatus": "plausible",
+                "confidence": 0.7,
+                "conflict": false,
+                "source": {
+                  "document": "mg350-manual-final.pdf",
+                  "pages": [
+                    243
+                  ],
+                  "rawText": "NGKPFR6Y"
+                }
+              }
+            ],
+            "dependsOnVariant": false,
+            "expectedUnit": "ref"
+          },
+          {
+            "id": "gap",
+            "label": "Gap",
+            "values": [
+              {
+                "value": "0,9 mm",
+                "status": "extracted",
+                "validationStatus": "verified",
+                "confidence": 1,
+                "conflict": false,
+                "source": {
+                  "document": "mg350-manual-final.pdf",
+                  "pages": [
+                    243
+                  ],
+                  "section": "Bujía:",
+                  "rawText": "0,9 mm"
+                }
+              }
+            ],
+            "dependsOnVariant": false,
+            "expectedUnit": "mm"
+          },
+          {
+            "id": "torque",
+            "label": "Torque",
+            "values": [
+              {
+                "value": "20-30 Nm",
+                "status": "extracted",
+                "validationStatus": "verified",
+                "confidence": 1,
+                "conflict": false,
+                "source": {
+                  "document": "mg350-manual-final.pdf",
+                  "pages": [
+                    78
+                  ],
+                  "section": "Perno - alternador a la culata",
+                  "rawText": "20-30 Nm"
+                }
+              }
+            ],
+            "dependsOnVariant": false,
+            "expectedUnit": "Nm"
+          }
+        ],
+        "status": "extracted",
+        "validationStatus": "verified",
+        "lastUpdated": "2026-08-06T12:17:33.363Z",
+        "verified": false
+      }
+    ],
+    "filtros": [
+      {
+        "id": "oil_filter",
+        "system": "filtros",
+        "name": "Filtro de Aceite",
+        "icon": "🧰",
+        "specFields": [
+          {
+            "id": "partNumber",
+            "label": "Referencia",
+            "values": [
+              {
+                "value": "",
+                "status": "not_published",
+                "validationStatus": "plausible",
+                "confidence": 0
+              }
+            ],
+            "dependsOnVariant": false,
+            "expectedUnit": "ref"
+          }
+        ],
+        "status": "not_published",
+        "validationStatus": "plausible",
+        "lastUpdated": "2026-08-06T12:17:33.403Z",
+        "verified": false
+      },
+      {
+        "id": "air_filter",
+        "system": "filtros",
+        "name": "Filtro de Aire",
+        "icon": "🌬️",
+        "specFields": [
+          {
+            "id": "partNumber",
+            "label": "Referencia",
+            "values": [
+              {
+                "value": "",
+                "status": "not_published",
+                "validationStatus": "plausible",
+                "confidence": 0
+              }
+            ],
+            "dependsOnVariant": false,
+            "expectedUnit": "ref"
+          }
+        ],
+        "status": "not_published",
+        "validationStatus": "plausible",
+        "lastUpdated": "2026-08-06T12:17:33.403Z",
+        "verified": false
+      },
+      {
+        "id": "cabin_filter",
+        "system": "filtros",
+        "name": "Filtro de Polen / Habitáculo",
+        "icon": "🏠",
+        "specFields": [
+          {
+            "id": "partNumber",
+            "label": "Referencia",
+            "values": [
+              {
+                "value": "",
+                "status": "not_published",
+                "validationStatus": "plausible",
+                "confidence": 0
+              }
+            ],
+            "dependsOnVariant": false,
+            "expectedUnit": "ref"
+          }
+        ],
+        "status": "not_published",
+        "validationStatus": "plausible",
+        "lastUpdated": "2026-08-06T12:17:33.403Z",
+        "verified": false
+      }
+    ],
+    "frenos": [
+      {
+        "id": "brake_pad_front",
+        "system": "frenos",
+        "name": "Pastillas de Freno Delanteras",
+        "icon": "🛑",
+        "specFields": [
+          {
+            "id": "partNumber",
+            "label": "Referencia",
+            "values": [
+              {
+                "value": "",
+                "status": "not_published",
+                "validationStatus": "plausible",
+                "confidence": 0
+              }
+            ],
+            "dependsOnVariant": false,
+            "expectedUnit": "ref"
+          }
+        ],
+        "status": "not_published",
+        "validationStatus": "plausible",
+        "lastUpdated": "2026-08-06T12:17:33.264Z",
+        "verified": false
+      },
+      {
+        "id": "brake_pad_rear",
+        "system": "frenos",
+        "name": "Pastillas de Freno Traseras",
+        "icon": "🛑",
+        "specFields": [
+          {
+            "id": "partNumber",
+            "label": "Referencia",
+            "values": [
+              {
+                "value": "",
+                "status": "not_published",
+                "validationStatus": "plausible",
+                "confidence": 0
+              }
+            ],
+            "dependsOnVariant": false,
+            "expectedUnit": "ref"
+          }
+        ],
+        "status": "not_published",
+        "validationStatus": "plausible",
+        "lastUpdated": "2026-08-06T12:17:33.264Z",
+        "verified": false
+      }
+    ],
+    "suspension": [],
+    "transmision": [
+      {
+        "id": "transmission_oil",
+        "system": "transmision",
+        "name": "Aceite de Transmisión",
+        "icon": "⚙️",
+        "specFields": [
+          {
+            "id": "capacity",
+            "label": "Capacidad",
+            "values": [
+              {
+                "value": "2 L",
+                "status": "extracted",
+                "validationStatus": "verified",
+                "confidence": 1,
+                "variant": {
+                  "kind": "transmission",
+                  "id": "mt",
+                  "label": "Transmisión Manual (MT)"
+                },
+                "conflict": false,
+                "source": {
+                  "document": "mg350-manual-final.pdf",
+                  "pages": [
+                    75
+                  ],
+                  "section": "Manual Transmisión:",
+                  "rawText": "2 L"
+                }
+              },
+              {
+                "value": "2,2 L",
+                "status": "extracted",
+                "validationStatus": "verified",
+                "confidence": 1,
+                "variant": {
+                  "kind": "transmission",
+                  "id": "mt",
+                  "label": "Transmisión Manual (MT)"
+                },
+                "conflict": false,
+                "source": {
+                  "document": "mg350-manual-final.pdf",
+                  "pages": [
+                    75
+                  ],
+                  "section": "Manual Transmisión:",
+                  "rawText": "2,2 L"
+                }
+              },
+              {
+                "value": "2,9 l",
+                "status": "extracted",
+                "validationStatus": "verified",
+                "confidence": 1,
+                "variant": {
+                  "kind": "transmission",
+                  "id": "at",
+                  "label": "Transmisión Automática (AT)"
+                },
+                "conflict": false,
+                "source": {
+                  "document": "mg350-manual-final.pdf",
+                  "pages": [
+                    75
+                  ],
+                  "section": "Transmisión automática:",
+                  "rawText": "2,9 l"
+                }
+              }
+            ],
+            "dependsOnVariant": true,
+            "expectedUnit": "L"
+          },
+          {
+            "id": "grade",
+            "label": "Grado",
+            "values": [
+              {
+                "value": "MTF94",
+                "status": "extracted",
+                "validationStatus": "plausible",
+                "confidence": 0.75,
+                "variant": {
+                  "kind": "transmission",
+                  "id": "mt",
+                  "label": "Transmisión Manual (MT)"
+                },
+                "conflict": false,
+                "source": {
+                  "document": "mg350-manual-final.pdf",
+                  "pages": [
+                    76
+                  ],
+                  "rawText": "MTF94"
+                }
+              }
+            ],
+            "dependsOnVariant": true,
+            "expectedUnit": "norma"
+          }
+        ],
+        "status": "extracted",
+        "validationStatus": "verified",
+        "lastUpdated": "2026-08-06T12:17:33.177Z",
+        "verified": false
+      }
+    ],
+    "electrico": [
+      {
+        "id": "headlight",
+        "system": "electrico",
+        "name": "Iluminación Principal",
+        "icon": "💡",
+        "specFields": [
+          {
+            "id": "partNumber",
+            "label": "Referencia",
+            "values": [
+              {
+                "value": "",
+                "status": "not_published",
+                "validationStatus": "plausible",
+                "confidence": 0
+              }
+            ],
+            "dependsOnVariant": false,
+            "expectedUnit": "ref"
+          }
+        ],
+        "status": "not_published",
+        "validationStatus": "plausible",
+        "lastUpdated": "2026-08-06T12:17:33.453Z",
+        "verified": false
+      },
+      {
+        "id": "battery",
+        "system": "electrico",
+        "name": "Batería",
+        "icon": "🔋",
+        "specFields": [
+          {
+            "id": "capacity",
+            "label": "Capacidad",
+            "values": [
+              {
+                "value": "",
+                "status": "not_published",
+                "validationStatus": "plausible",
+                "confidence": 0
+              }
+            ],
+            "dependsOnVariant": false,
+            "expectedUnit": "Ah"
+          },
+          {
+            "id": "group",
+            "label": "Grupo / Medida",
+            "values": [
+              {
+                "value": "",
+                "status": "not_published",
+                "validationStatus": "plausible",
+                "confidence": 0
+              }
+            ],
+            "dependsOnVariant": false,
+            "expectedUnit": "grupo"
+          }
+        ],
+        "status": "not_published",
+        "validationStatus": "plausible",
+        "lastUpdated": "2026-08-06T12:17:33.453Z",
+        "verified": false
+      }
+    ],
+    "neumaticos": [
+      {
+        "id": "wheel_torque",
+        "system": "neumaticos",
+        "name": "Torque de Rueda",
+        "icon": "🔧",
+        "specFields": [
+          {
+            "id": "torque",
+            "label": "Torque",
+            "values": [
+              {
+                "value": "115-130 Nm",
+                "status": "extracted",
+                "validationStatus": "verified",
+                "confidence": 1,
+                "conflict": false,
+                "source": {
+                  "document": "mg350-manual-final.pdf",
+                  "pages": [
+                    517
+                  ],
+                  "section": "Perno - acero en carretera de tornillos de rueda",
+                  "rawText": "115-130 Nm"
+                }
+              }
+            ],
+            "dependsOnVariant": false,
+            "expectedUnit": "Nm"
+          }
+        ],
+        "status": "extracted",
+        "validationStatus": "verified",
+        "lastUpdated": "2026-08-06T12:17:33.419Z",
+        "verified": false
+      },
+      {
+        "id": "tire_size",
+        "system": "neumaticos",
+        "name": "Medida de Neumáticos",
+        "icon": "🛞",
+        "specFields": [
+          {
+            "id": "size",
+            "label": "Medida",
+            "values": [
+              {
+                "value": "205/55 R16",
+                "status": "extracted",
+                "validationStatus": "plausible",
+                "confidence": 0.7,
+                "conflict": false,
+                "source": {
+                  "document": "mg350-manual-final.pdf",
+                  "pages": [
+                    598
+                  ],
+                  "rawText": "205/55 R16"
+                }
+              }
+            ],
+            "dependsOnVariant": false,
+            "expectedUnit": "medida"
+          },
+          {
+            "id": "pressure",
+            "label": "Presión",
+            "values": [
+              {
+                "value": "2,1 bar",
+                "status": "extracted",
+                "validationStatus": "verified",
+                "confidence": 1,
+                "conflict": false,
+                "source": {
+                  "document": "mg350-manual-final.pdf",
+                  "pages": [
+                    598
+                  ],
+                  "section": "Presión de los neumáticos - Normal Estado de lasFrente",
+                  "rawText": "2,1 bar"
+                }
+              }
+            ],
+            "dependsOnVariant": false,
+            "expectedUnit": "bar"
+          }
+        ],
+        "status": "extracted",
+        "validationStatus": "verified",
+        "lastUpdated": "2026-08-06T12:17:33.453Z",
+        "verified": false
+      }
+    ],
+    "carroceria": [
+      {
+        "id": "wiper_blade",
+        "system": "carroceria",
+        "name": "Plumillas Delanteras",
+        "icon": "🌧️",
+        "specFields": [
+          {
+            "id": "partNumber",
+            "label": "Referencia",
+            "values": [
+              {
+                "value": "",
+                "status": "not_published",
+                "validationStatus": "plausible",
+                "confidence": 0
+              }
+            ],
+            "dependsOnVariant": false,
+            "expectedUnit": "ref"
+          }
+        ],
+        "status": "not_published",
+        "validationStatus": "plausible",
+        "lastUpdated": "2026-08-06T12:17:33.453Z",
+        "verified": false
+      },
+      {
+        "id": "wiper_rear",
+        "system": "carroceria",
+        "name": "Plumilla Trasera",
+        "icon": "🌧️",
+        "specFields": [
+          {
+            "id": "partNumber",
+            "label": "Referencia",
+            "values": [
+              {
+                "value": "",
+                "status": "not_published",
+                "validationStatus": "plausible",
+                "confidence": 0
+              }
+            ],
+            "dependsOnVariant": false,
+            "expectedUnit": "ref"
+          }
+        ],
+        "status": "not_published",
+        "validationStatus": "plausible",
+        "lastUpdated": "2026-08-06T12:17:33.453Z",
+        "verified": false
+      }
+    ]
+  },
+  "parts": {
+    "entries": [
+      {
+        "componentId": "oil_filter",
+        "parts": [
+          {
+            "oem": "LPW 100180",
+            "aftermarket": [
+              {
+                "brand": "MANN-FILTER",
+                "partNumber": "W 713/28"
+              },
+              {
+                "brand": "MAHLE",
+                "partNumber": "OC 237/1"
+              },
+              {
+                "brand": "BOSCH",
+                "partNumber": "0 451 104 026"
+              }
+            ],
+            "compatible": [
+              "MG 350 1.5 VTi (SAIC 15S4U, 2010-2015)",
+              "Roewe 350 1.5 (2010-2015)"
+            ],
+            "source": "equivalence",
+            "verified": true,
+            "note": "Verificado contra catálogo MANN-FILTER vía Autodoc: el W 713/28 lista el motor 1.5 VTi en su compatibilidad. OE alternativos publicados: 10073599, 10276597, 710000263."
+          },
+          {
+            "oem": "UJ-1797",
+            "aftermarket": [],
+            "compatible": [
+              "MG 350S 1.5 — instalado por el dueño"
+            ],
+            "source": "user",
+            "verified": true,
+            "note": "Filtro instalado por el dueño. Lo que importa al comprar es el HILO: 13/16\" (rosca) — el cuerpo del filtro puede verse similar pero el hilo debe calzar. Último filtro de aceite puesto en el vehículo."
+          }
+        ]
+      },
+      {
+        "componentId": "air_filter",
+        "parts": [
+          {
+            "oem": "26 × 9 cm (panel, medido)",
+            "aftermarket": [],
+            "compatible": [
+              "MG 350S 1.5 — filtro del capó, medido por el dueño"
+            ],
+            "source": "user",
+            "verified": true,
+            "note": "Filtro de aire del capó (caja de aire): elemento filtrante de 26 × 9 cm medido por el dueño. El dueño CONFIRMA (2026-08-06) que el candidato MANN C 2774 (26,8 × 10,8 cm) concuerda: la diferencia de ~2 cm es el marco/borde de goma. STP 30005099 y SAIC 50016901 (ancho ~18-19 cm) NO coinciden con la medida real."
+          },
+          {
+            "aftermarket": [
+              {
+                "brand": "STP",
+                "partNumber": "30005099"
+              }
+            ],
+            "compatible": [
+              "MG 350 1.5 2011-2018 / MG 3 — según vendedores chilenos"
+            ],
+            "source": "catalog",
+            "verified": false,
+            "note": "Referencia que se vende en CHILE para MG 350 1.5 (Lider.cl $11.100 CLP; ulti.cl; filtroshlc.net). Medidas declaradas por vendedores: 377 × 180 × 35 mm — NO coinciden con el filtro medido (26 × 9 cm). Antes de comprar, compara con tu filtro real."
+          },
+          {
+            "aftermarket": [
+              {
+                "brand": "SAIC OEM",
+                "partNumber": "50016901"
+              }
+            ],
+            "compatible": [
+              "Roewe 350 1.5 / MG 5 1.5 (15S4U/15S4C)"
+            ],
+            "source": "catalog",
+            "verified": false,
+            "note": "OEM SAIC del grupo 1.5L. Medidas declaradas: 255 × 192 × 50 mm (Unifil, Cautop) — NO coinciden con el filtro medido (26 × 9 cm)."
+          },
+          {
+            "aftermarket": [
+              {
+                "brand": "MANN-FILTER",
+                "partNumber": "C 2774"
+              },
+              {
+                "brand": "MAHLE",
+                "partNumber": "LX 719"
+              },
+              {
+                "brand": "BOSCH",
+                "partNumber": "1 457 433 781"
+              }
+            ],
+            "compatible": [
+              "MG 350S 1.5 — panel 26,8 × 10,8 cm (marco); elemento 26 × 9 cm confirmado por el dueño"
+            ],
+            "source": "equivalence",
+            "verified": true,
+            "note": "Candidato de catálogos europeos (Autodoc): panel plano 26,8 × 10,8 × 5,7 cm. VERIFICADO por reconciliación del dueño (2026-08-06): el elemento real del capó mide 26 × 9 cm y la diferencia de ~2 cm corresponde al marco/borde de goma. Equivalencias: MANN C 2774, MAHLE LX 719, BOSCH 1 457 433 781."
+          }
+        ]
+      },
+      {
+        "componentId": "wiper_blade",
+        "parts": [
+          {
+            "oem": "23\" (59 cm) · tipo J",
+            "aftermarket": [],
+            "compatible": [
+              "MG 350S — plumilla instalada por el dueño"
+            ],
+            "source": "user",
+            "verified": true,
+            "side": "driver",
+            "note": "Plumilla del CONDUCTOR instalada por el dueño: 59 cm (23\"), gancho tipo J. El dueño también anotó \"H4 (20mm)\" junto a la plumilla — posible ancho/adaptador, sin confirmar."
+          },
+          {
+            "oem": "16\" (40 cm) · tipo J",
+            "aftermarket": [],
+            "compatible": [
+              "MG 350S — plumilla del pasajero, medida por el dueño"
+            ],
+            "source": "user",
+            "verified": true,
+            "side": "passenger",
+            "note": "Plumilla del PASAJERO: 16\" (40 cm), gancho tipo J, según el dueño."
+          }
+        ]
+      },
+      {
+        "componentId": "wiper_rear",
+        "parts": [
+          {
+            "aftermarket": [],
+            "compatible": [],
+            "source": "catalog",
+            "verified": false,
+            "note": "No aplica: el MG 350S es un sedán y NO tiene plumilla trasera. Los juegos del Roewe 350 se venden como kit frontal de 2 piezas."
+          }
+        ]
+      },
+      {
+        "componentId": "headlight",
+        "parts": [
+          {
+            "oem": "H4 LED",
+            "aftermarket": [],
+            "compatible": [
+              "MG 350S — iluminación principal instalada por el dueño"
+            ],
+            "source": "user",
+            "verified": true,
+            "note": "Focos LED H4 instalados por el dueño en la iluminación principal."
+          }
+        ]
+      },
+      {
+        "componentId": "cabin_filter",
+        "parts": [
+          {
+            "aftermarket": [],
+            "compatible": [],
+            "source": "catalog",
+            "verified": false,
+            "note": "No disponible: los catálogos europeos consultados (MANN/MAHLE/BOSCH) no publican referencia para el MG 350 / Roewe 350. Buscar por medida o consultar un catálogo SAIC local."
+          }
+        ]
+      },
+      {
+        "componentId": "spark_plug",
+        "parts": [
+          {
+            "oem": "NGK PFR6Y",
+            "aftermarket": [
+              {
+                "brand": "BOSCH",
+                "partNumber": "FR7DC+ (0 242 235 666)"
+              },
+              {
+                "brand": "DENSO",
+                "partNumber": "K20PR-U"
+              }
+            ],
+            "compatible": [
+              "MG 350 1.5 VTi (SAIC 15S4U, 2010-2015)",
+              "Roewe 350 1.5 (2010-2015)"
+            ],
+            "source": "manual",
+            "verified": true,
+            "note": "Bujía especificada en el manual de taller p.243 (NGK PFR6Y, brecha 0,8-0,9 mm). NGK Laser Platinum (doble platino), stock 9331: M14×1.25, rosca 19 mm, hex 16 mm. BOSCH FR7DC+ y DENSO K20PR-U son equivalentes directos por cruzamiento NGK."
+          }
+        ]
+      },
+      {
+        "componentId": "tire_size",
+        "parts": [
+          {
+            "oem": "205/55 R16 91V",
+            "aftermarket": [],
+            "compatible": [
+              "MG 350 1.5 (2010-2015)",
+              "Roewe 350 1.5 (2010-2015)"
+            ],
+            "source": "manual",
+            "verified": true,
+            "note": "Medida real del manual p.598: neumático 205/55 R16 91V sobre llanta 6.5J×16 (aleación y acerado); repuesto del mismo tamaño. Presión recomendada 2,1 bar (delante y detrás, normal y alta velocidad). Índice de carga 91, velocidad V."
+          }
+        ]
+      },
+      {
+        "componentId": "battery",
+        "parts": [
+          {
+            "oem": "DIN L1 (207 × 175 × 190 mm)",
+            "aftermarket": [
+              {
+                "brand": "BOSCH",
+                "partNumber": "S4 / S5 (L1, 50-54 Ah)"
+              },
+              {
+                "brand": "LTH",
+                "partNumber": "DIN 50/54 (L1)"
+              },
+              {
+                "brand": "MOURA",
+                "partNumber": "DIN 50/55 (L1)"
+              },
+              {
+                "brand": "VARTA",
+                "partNumber": "C30 (54 Ah, L1)"
+              }
+            ],
+            "compatible": [
+              "MG 350 1.5 (2010-2015)",
+              "Roewe 350 1.5 (plataforma SAIC AP11)"
+            ],
+            "source": "catalog",
+            "verified": false,
+            "note": "Grupo DIN L1: 50-54 Ah, 450-530 CCA (EN), 207×175×190 mm, positivo derecho (R+), fijación B13. ⚠️ Candidata por catálogo (sin página con compatibilidad explícita): verifica la medida y polaridad de la batería actual antes de comprar. El manual de taller no publica la batería."
+          }
+        ]
+      },
+      {
+        "componentId": "brake_pad_front",
+        "parts": [
+          {
+            "oem": "10026870 (SAIC)",
+            "aftermarket": [
+              {
+                "brand": "TRW",
+                "partNumber": "GDB7832"
+              },
+              {
+                "brand": "FERODO",
+                "partNumber": "FDB4436"
+              },
+              {
+                "brand": "BREMBO",
+                "partNumber": "P 51 003"
+              },
+              {
+                "brand": "DELPHI",
+                "partNumber": "LP2695"
+              }
+            ],
+            "compatible": [
+              "MG 350 1.5 (2011-2018)",
+              "Roewe 350 1.5 (AP11)",
+              "MG 3 / MG 5 (misma pinza frontal SAIC)"
+            ],
+            "source": "equivalence",
+            "verified": true,
+            "note": "Delanteras verificadas por catálogos europeos (Autodoc/TecDoc). OEM SAIC 10026870 (alternativos 10088104, 10163252, 10343249). TRW GDB7832 y Ferodo FDB4436 mapean el OEM; Delphi LP2695 listado para MG 350 1.5L 2011+. Dimensiones típicas ~150-156 × 50-56 × 17 mm. Siempre cambiar por juego completo de eje."
+          },
+          {
+            "aftermarket": [
+              {
+                "brand": "BOSCH",
+                "partNumber": "0 986 T11 280"
+              }
+            ],
+            "compatible": [
+              "MG 350 1.5 (2011-2015)",
+              "Roewe 350 1.5 (AP11)"
+            ],
+            "source": "catalog",
+            "verified": false,
+            "note": "Candidata BOSCH delantera: 0 986 T11 280 según cruces Autodoc/Brembo para el OEM 10026870/10343249. ⚠️ Otra fuente lista el 0 986 T11 224 como variante — verifica el número impreso en tus pastillas actuales antes de comprar."
+          }
+        ]
+      },
+      {
+        "componentId": "brake_pad_rear",
+        "parts": [
+          {
+            "oem": "10030811 (SAIC) · espesor 15 mm",
+            "aftermarket": [
+              {
+                "brand": "BREMBO",
+                "partNumber": "P 85 017"
+              },
+              {
+                "brand": "TRW",
+                "partNumber": "GDB823"
+              },
+              {
+                "brand": "FERODO",
+                "partNumber": "FDB1083"
+              },
+              {
+                "brand": "DELPHI",
+                "partNumber": "LP2254"
+              }
+            ],
+            "compatible": [
+              "Roewe 350 1.5 (AP11, código C00L)",
+              "MG 350 1.5 (2011-2015)"
+            ],
+            "source": "equivalence",
+            "verified": true,
+            "note": "Traseras 15 mm: OEM SAIC 10030811 confirmado por catálogos SAIC/EPC y cruce Spareto. Brembo P 85 017 en el catálogo oficial Brembo para Roewe 350 1.5. ⚠️ Verifica el espesor de tus pastillas actuales: si son 17 mm, usa la otra variante."
+          },
+          {
+            "oem": "10030811 (SAIC) · espesor 17 mm",
+            "aftermarket": [
+              {
+                "brand": "BREMBO",
+                "partNumber": "P 85 020"
+              },
+              {
+                "brand": "TRW",
+                "partNumber": "GDB1330"
+              }
+            ],
+            "compatible": [
+              "Roewe 350 1.5 (AP11)",
+              "MG 350 1.5 (2011-2015)"
+            ],
+            "source": "equivalence",
+            "verified": true,
+            "note": "Traseras 17 mm: variante más gruesa del mismo OEM SAIC 10030811. ⚠️ Solo usa esta si tus pastillas actuales miden 17 mm; la mayoría usa 15 mm (P 85 017 / GDB823)."
+          },
+          {
+            "aftermarket": [
+              {
+                "brand": "BOSCH",
+                "partNumber": "0 986 495 series (trasera)"
+              }
+            ],
+            "compatible": [
+              "MG 350 1.5 (2011-2015)",
+              "Roewe 350 1.5 (AP11)"
+            ],
+            "source": "catalog",
+            "verified": false,
+            "note": "Candidata BOSCH trasera: los catálogos no publican una referencia única clara para el eje trasero (configuración TRW/Lucas con WVA 20960). Busca por OEM 10030811 en tienda y verifica el WVA impreso en tus pastillas."
+          }
+        ]
+      }
+    ]
+  },
+  "maintenanceSchedule": [],
+  "diagnostics": [],
+  "lastExtracted": "2026-08-06T12:17:33.453Z",
+  "extractionSource": "mg350-manual-final.pdf",
+  "coverage": {
+    "totalSlots": 29,
+    "extracted": 24,
+    "notFound": 0,
+    "notPublished": 10,
+    "decisionReady": 9
+  },
+  "preloaded": true
+}

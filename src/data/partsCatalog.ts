@@ -28,6 +28,11 @@
 //     207×175×190 mm, positivo derecho) según catálogos de baterías para el
 //     MG 350 / Roewe 350 (plataforma SAIC AP11). SIN verificación por página
 //     con compatibilidad explícita → candidata (verified:false).
+//   • Pastillas de freno (2026-08-06): VERIFICADAS por catálogos europeos con
+//     compatibilidad explícita para MG 350 1.5 / Roewe 350 1.5 (AP11):
+//     delanteras OEM 10026870 → TRW GDB7832, Ferodo FDB4436, Brembo P 51 003,
+//     Delphi LP2695; traseras OEM 10030811 → Brembo P 85 017/P 85 020 (15/17
+//     mm), TRW GDB823/GDB1330, Ferodo FDB1083, Delphi LP2254.
 // ============================================================================
 
 import { PartInfo } from "../types/technicalV2";
@@ -269,6 +274,89 @@ export const PARTS_CATALOG: CatalogEntry[] = [
         source: "catalog",
         verified: false,
         note: "Grupo DIN L1: 50-54 Ah, 450-530 CCA (EN), 207×175×190 mm, positivo derecho (R+), fijación B13. ⚠️ Candidata por catálogo (sin página con compatibilidad explícita): verifica la medida y polaridad de la batería actual antes de comprar. El manual de taller no publica la batería.",
+      },
+    ],
+  },
+
+  // ── Pastillas de freno DELANTERAS ─────────────────────────────────────────
+  // El manual NO publica la referencia (solo procedimientos de cambio).
+  // VERIFICADAS por catálogos europeos que listan el MG 350 1.5 / Roewe 350
+  // 1.5 con compatibilidad explícita (TRW GDB7832 y Ferodo FDB4436 mapean el
+  // OEM SAIC 10026870; Delphi LP2695 listado para MG 350 1.5L 2011+).
+  {
+    componentId: "brake_pad_front",
+    parts: [
+      {
+        oem: "10026870 (SAIC)",
+        aftermarket: [
+          { brand: "TRW", partNumber: "GDB7832" },
+          { brand: "FERODO", partNumber: "FDB4436" },
+          { brand: "BREMBO", partNumber: "P 51 003" },
+          { brand: "DELPHI", partNumber: "LP2695" },
+        ],
+        compatible: [
+          "MG 350 1.5 (2011-2018)",
+          "Roewe 350 1.5 (AP11)",
+          "MG 3 / MG 5 (misma pinza frontal SAIC)",
+        ],
+        source: "equivalence",
+        verified: true,
+        note: "Delanteras verificadas por catálogos europeos (Autodoc/TecDoc). OEM SAIC 10026870 (alternativos 10088104, 10163252, 10343249). TRW GDB7832 y Ferodo FDB4436 mapean el OEM; Delphi LP2695 listado para MG 350 1.5L 2011+. Dimensiones típicas ~150-156 × 50-56 × 17 mm. Siempre cambiar por juego completo de eje.",
+      },
+      {
+        aftermarket: [
+          { brand: "BOSCH", partNumber: "0 986 T11 280" },
+        ],
+        compatible: ["MG 350 1.5 (2011-2015)", "Roewe 350 1.5 (AP11)"],
+        source: "catalog",
+        verified: false,
+        note: "Candidata BOSCH delantera: 0 986 T11 280 según cruces Autodoc/Brembo para el OEM 10026870/10343249. ⚠️ Otra fuente lista el 0 986 T11 224 como variante — verifica el número impreso en tus pastillas actuales antes de comprar.",
+      },
+    ],
+  },
+
+  // ── Pastillas de freno TRASERAS ───────────────────────────────────────────
+  // El manual NO publica la referencia. VERIFICADA por catálogo Brembo
+  // oficial (P 85 017 listada para Roewe (SAIC) 350 1.5 eje trasero).
+  // OEM SAIC 10030811 confirmado en catálogos SAIC/EPC y cruces (Spareto).
+  {
+    componentId: "brake_pad_rear",
+    parts: [
+      {
+        // Variante 15 mm — la más común según catálogo Brembo oficial
+        // (P 85 017 listada para Roewe 350 1.5, pinza Lucas, 87 × 53 × 15 mm).
+        oem: "10030811 (SAIC) · espesor 15 mm",
+        aftermarket: [
+          { brand: "BREMBO", partNumber: "P 85 017" },
+          { brand: "TRW", partNumber: "GDB823" },
+          { brand: "FERODO", partNumber: "FDB1083" },
+          { brand: "DELPHI", partNumber: "LP2254" },
+        ],
+        compatible: ["Roewe 350 1.5 (AP11, código C00L)", "MG 350 1.5 (2011-2015)"],
+        source: "equivalence",
+        verified: true,
+        note: "Traseras 15 mm: OEM SAIC 10030811 confirmado por catálogos SAIC/EPC y cruce Spareto. Brembo P 85 017 en el catálogo oficial Brembo para Roewe 350 1.5. ⚠️ Verifica el espesor de tus pastillas actuales: si son 17 mm, usa la otra variante.",
+      },
+      {
+        // Variante 17 mm — pastillas más gruesas (misma pinza).
+        oem: "10030811 (SAIC) · espesor 17 mm",
+        aftermarket: [
+          { brand: "BREMBO", partNumber: "P 85 020" },
+          { brand: "TRW", partNumber: "GDB1330" },
+        ],
+        compatible: ["Roewe 350 1.5 (AP11)", "MG 350 1.5 (2011-2015)"],
+        source: "equivalence",
+        verified: true,
+        note: "Traseras 17 mm: variante más gruesa del mismo OEM SAIC 10030811. ⚠️ Solo usa esta si tus pastillas actuales miden 17 mm; la mayoría usa 15 mm (P 85 017 / GDB823).",
+      },
+      {
+        aftermarket: [
+          { brand: "BOSCH", partNumber: "0 986 495 series (trasera)" },
+        ],
+        compatible: ["MG 350 1.5 (2011-2015)", "Roewe 350 1.5 (AP11)"],
+        source: "catalog",
+        verified: false,
+        note: "Candidata BOSCH trasera: los catálogos no publican una referencia única clara para el eje trasero (configuración TRW/Lucas con WVA 20960). Busca por OEM 10030811 en tienda y verifica el WVA impreso en tus pastillas.",
       },
     ],
   },

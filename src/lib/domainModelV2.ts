@@ -241,6 +241,45 @@ export const COMPONENT_DEFS: ComponentDef[] = [
     ],
   },
   {
+    // Pastillas de freno DELANTERAS — el manual NO publica la referencia
+    // (solo procedimientos de cambio, p.601-625). El catálogo (Fase 2) la
+    // aporta: OEM SAIC 10026870 + equivalencias TRW/Ferodo/Brembo/Delphi.
+    id: "brake_pad_front",
+    system: "frenos",
+    name: "Pastillas de Freno Delanteras",
+    icon: "🛑",
+    slots: [
+      {
+        id: "partNumber",
+        label: "Referencia",
+        concept: /pastill.*delanter|brake\s*pad.*front|freno.*delanter/i,
+        valuePattern: /\d{8}|[A-Z]{1,4}\s?\d{3,6}/,
+        unit: "ref",
+        scope: "never-publishes",
+        transform: (r) => r.trim(),
+      },
+    ],
+  },
+  {
+    // Pastillas de freno TRASERAS — el manual NO publica la referencia.
+    // El catálogo aporta OEM SAIC 10030811 + equivalencias (Brembo P 85 017).
+    id: "brake_pad_rear",
+    system: "frenos",
+    name: "Pastillas de Freno Traseras",
+    icon: "🛑",
+    slots: [
+      {
+        id: "partNumber",
+        label: "Referencia",
+        concept: /pastill.*traser|brake\s*pad.*rear|freno.*traser/i,
+        valuePattern: /\d{8}|[A-Z]{1,4}\s?\d{3,6}/,
+        unit: "ref",
+        scope: "never-publishes",
+        transform: (r) => r.trim(),
+      },
+    ],
+  },
+  {
     id: "fuel_tank",
     system: "fluidos",
     name: "Estanque de Combustible",

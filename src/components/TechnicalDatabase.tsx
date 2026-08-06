@@ -10,6 +10,7 @@ import {
   Zap,
   Info,
   Link2,
+  Database,
 } from "lucide-react";
 import * as pdfjsLib from "pdfjs-dist";
 // Worker de pdf.js empaquetado LOCALMENTE por Vite (?url) en vez de cargarlo
@@ -25,6 +26,10 @@ import {
 } from "../types/technicalV2";
 import { extractDocumentLayout, DocumentLayout } from "../lib/pdfLayout";
 import { TechnicalExtractorV2 } from "../lib/technicalExtractorV2";
+// Base técnica PRECARGADA del MG 350 (generada desde el manual real con
+// scripts/build-base-json.mjs): cualquier dispositivo carga la misma
+// información sin necesitar subir el PDF de 28 MB.
+import mg350Base from "../data/mg350Base.json";
 import { applySpecsSyncV2 } from "../lib/specsSyncV2";
 import {
   attachPartsCatalog,
@@ -36,6 +41,8 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 const MAX_PDF_SIZE = 50 * 1024 * 1024;
 const DB_STORAGE_KEY = "mg350_technical_db_v2";
+// Clave de la base precargada embebida (sin manual subido).
+const PRELOADED_SOURCE = "mg350-base-preloaded";
 
 interface TechnicalDatabaseProps {
   specs: VehicleSpecs;
@@ -448,6 +455,8 @@ export default function TechnicalDatabaseTab({
   const [pdfName, setPdfName] = useState<string>(specs.manualPdfNombre || "");
   const [loading, setLoading] = useState(false);
   const [database, setDatabase] = useState<VehicleTechnicalDatabaseV2 | null>(null);
+  // true → la base cargada es la PRECARGADA embebida (no un manual subido)
+  const [sourceIsPreloaded, setSourceIsPreloaded] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<TechnicalComponentV2[]>([]);
   const [expandedSystems, setExpandedSystems] = useState<Set<SystemCategory>>(
@@ -456,28 +465,40 @@ export default function TechnicalDatabaseTab({
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const layoutRef = useRef<DocumentLayout | null>(null);
 
-  // Persist database to localStorage (schema V2)
+  // Persist database to localStorage (schema V2). La base PRECARGADA no se
+  // persiste: siempre se recarga del módulo embebido y no debe ensuciar el
+  // storage (si se sube un manual después, esa entrada no se usaría).
   useEffect(() => {
-    if (database) {
+    if (database && !sourceIsPreloaded) {
       try {
         localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(database));
       } catch (e) {
         console.error("Error saving technical database:", e);
       }
     }
-  }, [database]);
+  }, [database, sourceIsPreloaded]);
 
   // Load persisted database on mount + auto-sync campos vacíos de la ficha.
+  // Si NO hay manual cargado, usa la base PRECARGADA embebida (mg350Base.json):
+  // cualquier dispositivo carga la misma información del MG 350 sin el PDF.
   useEffect(() => {
-    if (specs.manualPdfNombre && !database) {
+    if (database) return;
+
+    // (a) Hay un manual cargado → buscar la base extraída de ESE manual.
+    if (specs.manualPdfNombre) {
       try {
         const saved = localStorage.getItem(DB_STORAGE_KEY);
         if (saved) {
-          const parsed = JSON.parse(saved) as VehicleTechnicalDatabaseV2;
-          if (parsed.schemaVersion === 2 && parsed.extractionSource === specs.manualPdfNombre) {
+          const parsed = JSON.parse(saved) as VehicleTechnicalDatabaseV2 & { preloaded?: boolean };
+          if (
+            parsed.schemaVersion === 2 &&
+            !parsed.preloaded &&
+            parsed.extractionSource === specs.manualPdfNombre
+          ) {
             // Refrescar el catálogo vigente en DBs persistidas de sesiones viejas
             attachPartsCatalog(parsed);
             setDatabase(parsed);
+            setSourceIsPreloaded(false);
             const { updates } = applySpecsSyncV2(specs, parsed, false);
             if (Object.keys(updates).length > 0) {
               onUpdateSpecs(updates);
@@ -487,6 +508,19 @@ export default function TechnicalDatabaseTab({
       } catch (e) {
         console.error("Error loading technical database:", e);
       }
+      return;
+    }
+
+    // (b) Sin manual → base precargada embebida (misma info en cualquier
+    // dispositivo). Se clona para no mutar el módulo importado.
+    const base = JSON.parse(JSON.stringify(mg350Base)) as VehicleTechnicalDatabaseV2;
+    base.extractionSource = PRELOADED_SOURCE;
+    attachPartsCatalog(base);
+    setDatabase(base);
+    setSourceIsPreloaded(true);
+    const { updates } = applySpecsSyncV2(specs, base, false);
+    if (Object.keys(updates).length > 0) {
+      onUpdateSpecs(updates);
     }
   }, [specs.manualPdfNombre, database, specs, onUpdateSpecs]);
 
@@ -531,6 +565,7 @@ export default function TechnicalDatabaseTab({
         setPdfChars(totalChars);
         setPdfName(file.name);
         setDatabase(null);
+        setSourceIsPreloaded(false);
         onUpdateSpecs({ manualPdfNombre: file.name });
       } catch (error: any) {
         triggerToast(`Error: ${error.message || "No se pudo procesar el PDF"}`);
@@ -553,6 +588,7 @@ export default function TechnicalDatabaseTab({
     // Fase 2: conectar el catálogo de repuestos (fuente externa, separada del manual)
     attachPartsCatalog(newDatabase);
     setDatabase(newDatabase);
+    setSourceIsPreloaded(false);
 
     const c = newDatabase.coverage;
 
@@ -608,6 +644,7 @@ export default function TechnicalDatabaseTab({
     setPdfName("");
     setDatabase(null);
     setSearchResults([]);
+    setSourceIsPreloaded(false);
     localStorage.removeItem(DB_STORAGE_KEY);
     onUpdateSpecs({ manualPdfNombre: "" });
     triggerToast("Manual eliminado.");
@@ -675,7 +712,7 @@ export default function TechnicalDatabaseTab({
         </div>
       </div>
 
-      {/* PDF Status */}
+      {/* PDF Status (manual subido) */}
       {pdfName && (
         <div className="glass-panel p-4 rounded-xl border border-emerald-500/20 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -695,6 +732,29 @@ export default function TechnicalDatabaseTab({
           >
             <Trash2 className="w-4 h-4" />
           </button>
+        </div>
+      )}
+
+      {/* Base PRECARGADA (sin manual) — misma info del MG 350 en cualquier dispositivo */}
+      {sourceIsPreloaded && database && (
+        <div className="glass-panel p-4 rounded-xl border border-cyan-500/20 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+              <Database className="w-5 h-5 text-cyan-400" />
+            </div>
+            <div>
+              <p className="font-mono text-xs text-white font-bold">
+                Base técnica precargada MG 350
+                <span className="ml-2 px-1.5 py-0.5 bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 font-mono text-[8px] rounded">
+                  SIN PDF
+                </span>
+              </p>
+              <p className="font-mono text-[10px] text-white/40">
+                Misma información en cualquier dispositivo (extraída del manual real).
+                Puedes subir tu propio manual PDF para re-extraer con trazabilidad completa.
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
