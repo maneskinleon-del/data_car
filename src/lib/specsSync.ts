@@ -54,6 +54,7 @@ const FIELD_LABELS: Record<keyof VehicleSpecs, string> = {
   plumillaL: "Plumilla conductor",
   plumillaR: "Plumilla pasajero",
   ultimoCambioKm: "Último cambio",
+  odometroActual: "Odómetro actual",
   fusibles: "Fusibles",
   tipoCombustible: "Combustible",
   correaDistribucion: "Correa distribución",

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { X, Calendar, DollarSign, PenTool, CheckCircle2 } from "lucide-react";
 import { ServiceRecord } from "../types";
 
@@ -6,16 +6,67 @@ interface MaintenanceModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddRecord: (record: ServiceRecord) => void;
+  onUpdateRecord?: (record: ServiceRecord) => void;
+  editingRecord?: ServiceRecord | null;
   currentKm: number;
 }
 
-export default function MaintenanceModal({ isOpen, onClose, onAddRecord, currentKm }: MaintenanceModalProps) {
-  const [name, setName] = useState("Cambio Aceite & Filtros");
-  const [cost, setCost] = useState("130.00");
-  const [date, setDate] = useState("");
-  const [km, setKm] = useState(currentKm.toString());
-  const [category, setCategory] = useState<"primary" | "secondary" | "neutral">("primary");
+// "12 AGO 2026" (es-ES short, como se guarda el registro) → "2026-08-12"
+// para poder pre-llenar el input type=date al editar. "" si no es parseable
+// (p. ej. registros importados con fecha en otro locale → el campo queda
+// vacío y al guardar se usa la fecha de hoy, comportamiento esperado).
+const ES_MONTHS: Record<string, string> = {
+  ene: "01", feb: "02", mar: "03", abr: "04", may: "05", jun: "06",
+  jul: "07", ago: "08", sep: "09", oct: "10", nov: "11", dic: "12",
+};
+
+function parseLocalizedDate(str: string): string {
+  const clean = str.replace(/\./g, "").trim().toUpperCase();
+  const m = clean.match(/^(\d{1,2})\s+([A-Z]{3})\s+(\d{4})$/);
+  if (!m) return "";
+  const month = ES_MONTHS[m[2].toLowerCase()];
+  if (!month) return "";
+  return `${m[3]}-${month}-${m[1].padStart(2, "0")}`;
+}
+
+const SERVICE_OPTIONS = [
+  "Cambio Aceite & Filtros",
+  "Mantenimiento Mayor",
+  "Alineación y Balanceo",
+  "Revisión Eléctrica ECU",
+  "Otro",
+];
+
+export default function MaintenanceModal({
+  isOpen,
+  onClose,
+  onAddRecord,
+  onUpdateRecord,
+  editingRecord,
+  currentKm,
+}: MaintenanceModalProps) {
+  const isEditing = !!editingRecord;
+  const [name, setName] = useState(editingRecord?.name ?? "Cambio Aceite & Filtros");
+  const [cost, setCost] = useState(editingRecord ? String(editingRecord.cost) : "130.00");
+  const [date, setDate] = useState(editingRecord ? parseLocalizedDate(editingRecord.date) : "");
+  const [km, setKm] = useState(editingRecord ? String(editingRecord.km) : currentKm.toString());
+  const [category, setCategory] = useState<"primary" | "secondary" | "neutral">(
+    editingRecord?.colorType ?? "primary"
+  );
   const [success, setSuccess] = useState(false);
+
+  // Sincroniza el estado cada vez que se abre el modal (nuevo o edición) o que
+  // cambia el registro a editar. Sin esto, los valores previos quedarían
+  // colgados entre aperturas (el componente sigue montado aunque renderice null).
+  useEffect(() => {
+    if (!isOpen) return;
+    setName(editingRecord?.name ?? "Cambio Aceite & Filtros");
+    setCost(editingRecord ? String(editingRecord.cost) : "130.00");
+    setDate(editingRecord ? parseLocalizedDate(editingRecord.date) : "");
+    setKm(editingRecord ? String(editingRecord.km) : currentKm.toString());
+    setCategory(editingRecord?.colorType ?? "primary");
+    setSuccess(false);
+  }, [isOpen, editingRecord, currentKm]);
 
   if (!isOpen) return null;
 
@@ -30,7 +81,7 @@ export default function MaintenanceModal({ isOpen, onClose, onAddRecord, current
     }).toUpperCase();
 
     const newRecord: ServiceRecord = {
-      id: Math.random().toString(36).substring(2, 9),
+      id: editingRecord?.id ?? Math.random().toString(36).substring(2, 9),
       name: name,
       cost: parseFloat(cost) || 120.00,
       date: finalDate,
@@ -39,7 +90,13 @@ export default function MaintenanceModal({ isOpen, onClose, onAddRecord, current
       colorType: category
     };
 
-    onAddRecord(newRecord);
+    if (isEditing) {
+      // Nunca caer en onAddRecord estando en modo edición: si la prop no viene,
+      // no hacer nada en lugar de duplicar el registro.
+      onUpdateRecord?.(newRecord);
+    } else {
+      onAddRecord(newRecord);
+    }
     setSuccess(true);
     setTimeout(() => {
       setSuccess(false);
@@ -65,8 +122,14 @@ export default function MaintenanceModal({ isOpen, onClose, onAddRecord, current
         {success ? (
           <div className="flex flex-col items-center justify-center p-12 text-center bg-[#0A0A0A]/95 absolute inset-0 z-10 duration-200">
             <CheckCircle2 className="w-16 h-16 text-[#FF8A00] animate-bounce mb-4" />
-            <h3 className="font-display font-black text-2xl text-white uppercase tracking-wider">REGISTRO COMPLETADO</h3>
-            <p className="font-mono text-xs text-white/50 mt-2 tracking-wider">El mantenimiento ha sido añadido a tu historial personal.</p>
+            <h3 className="font-display font-black text-2xl text-white uppercase tracking-wider">
+              {isEditing ? "REGISTRO ACTUALIZADO" : "REGISTRO COMPLETADO"}
+            </h3>
+            <p className="font-mono text-xs text-white/50 mt-2 tracking-wider">
+              {isEditing
+                ? "Los cambios han sido guardados en tu historial personal."
+                : "El mantenimiento ha sido añadido a tu historial personal."}
+            </p>
           </div>
         ) : null}
 
@@ -74,7 +137,9 @@ export default function MaintenanceModal({ isOpen, onClose, onAddRecord, current
         <div className="flex items-center justify-between p-6 border-b border-white/10 bg-white/2">
           <div className="flex items-center gap-3">
             <PenTool className="w-5 h-5 text-[#FF3D00]" />
-            <h3 className="font-display font-black text-white text-md tracking-wider">REGISTRAR MANTENIMIENTO</h3>
+            <h3 className="font-display font-black text-white text-md tracking-wider">
+              {isEditing ? "EDITAR MANTENIMIENTO" : "REGISTRAR MANTENIMIENTO"}
+            </h3>
           </div>
           <button 
             type="button"
@@ -117,6 +182,10 @@ export default function MaintenanceModal({ isOpen, onClose, onAddRecord, current
               <option value="Alineación y Balanceo">Alineación, Balanceo & Suspensión</option>
               <option value="Revisión Eléctrica ECU">Revisión Eléctrica</option>
               <option value="Otro">Otro servicio</option>
+              {/* Registros importados pueden traer nombres fuera de la lista */}
+              {isEditing && editingRecord && !SERVICE_OPTIONS.includes(editingRecord.name) && (
+                <option value={editingRecord.name}>{editingRecord.name}</option>
+              )}
             </select>
           </div>
 
@@ -218,7 +287,7 @@ export default function MaintenanceModal({ isOpen, onClose, onAddRecord, current
               type="submit"
               className="flex-grow py-3.5 bg-gradient-to-r from-[#FF3D00] to-[#FF8A00] text-white font-bold rounded transition-transform active:scale-[0.98] duration-100 uppercase tracking-widest text-[10px] shadow-[0_4px_20px_rgba(255,61,0,0.3)]"
             >
-              Registrar Servicio
+              {isEditing ? "Guardar Cambios" : "Registrar Servicio"}
             </button>
           </div>
 

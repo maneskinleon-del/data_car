@@ -12,6 +12,7 @@ export interface VehicleSpecs {
   plumillaR: string;           // Plumilla lado pasajero (derecho)
   filtroAire: string;
   ultimoCambioKm: number;
+  odometroActual: number;  // lectura actual del odómetro (planificador de mantenimiento)
   // === Datos del Manual (extraídos o ingresados por el usuario) ===
   aceiteCaja: string;        // Aceite de caja / transmisión
   bujias: string;            // Bujías (modelo, gap)
