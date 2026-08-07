@@ -38,7 +38,17 @@ import {
   getPartsFromDb,
   lookupCatalogParts,
 } from "../lib/partsCatalogProvider";
-import { FUSES, getFusesByBox } from "../data/fuses";
+import {
+  FUSES,
+  getFusesByBox,
+  FUSE_COLORS,
+  BOX_LOCATIONS,
+  colorForAmps,
+  FuseEntry,
+} from "../data/fuses";
+// Página 627 del manual de taller: desmontaje físico de la caja de fusibles
+// del compartimiento del motor (renderizada e integrada como asset local).
+import engineFuseBoxImg from "../assets/fuses/engine-fuse-box-p627.webp";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
@@ -505,56 +515,101 @@ function OBD2ReferenceSection() {
   );
 }
 
-// ── Fusibles y relés (referencia del manual de taller) ─────────────────────
+// ── Fusibles (leyenda del manual del propietario) ──────────────────────────
 function FusesSection() {
   const [expanded, setExpanded] = useState(false);
+  const [query, setQuery] = useState("");
   const engine = getFusesByBox("engine");
   const cabin = getFusesByBox("cabin");
 
+  const filterEntries = (entries: FuseEntry[]) => {
+    const q = query.trim().toLowerCase();
+    if (!q) return entries;
+    return entries.filter(
+      (f) => f.id.toLowerCase().includes(q) || f.circuit.toLowerCase().includes(q)
+    );
+  };
+
   const boxCard = (boxId: "engine" | "cabin") => {
-    const entries = boxId === "engine" ? engine : cabin;
     const isEngine = boxId === "engine";
+    const entries = filterEntries(isEngine ? engine : cabin);
     return (
       <div className="rounded-lg border border-white/10 bg-white/5 p-3">
-        <div className="flex items-center gap-2 mb-2.5">
+        <div className="flex items-center gap-2 mb-1">
           <div className={`w-7 h-7 rounded bg-gradient-to-br ${isEngine ? "from-amber-500 to-orange-600" : "from-orange-500 to-red-600"} flex items-center justify-center shrink-0`}>
             <Zap className="w-3.5 h-3.5 text-white" />
           </div>
           <div>
             <p className="font-mono text-[10px] text-white font-bold tracking-wider uppercase">
-              {isEngine ? "Caja del capó" : "Caja del habitáculo"}
+              {isEngine ? "Caja del capó" : "Caja de la cabina"}
             </p>
             <p className="font-mono text-[8px] text-white/40 uppercase tracking-wider">
-              {isEngine ? "Compartimiento del motor" : "Interior · lado pasajero"}
+              {isEngine ? "Compartimiento del motor" : "Lado izquierdo del tablero"}
             </p>
           </div>
         </div>
-        <div className="space-y-1.5">
-          {entries.map((f) => (
-            <div key={f.id} className="flex items-center justify-between gap-2 py-1 px-1.5 rounded hover:bg-white/5">
-              <div className="flex items-center gap-2 min-w-0">
-                <span
-                  className={`px-1.5 py-0.5 rounded font-mono text-[9px] font-bold shrink-0 ${
-                    f.kind === "relay"
-                      ? "bg-cyan-500/10 border border-cyan-500/30 text-cyan-300"
-                      : "bg-amber-500/10 border border-amber-500/30 text-amber-300"
-                  }`}
-                >
-                  {f.id}
-                </span>
-                <span className="font-mono text-[9px] text-white/70 truncate">{f.circuit}</span>
-              </div>
-              <span className="flex items-center gap-1.5 shrink-0">
-                {f.amps && (
-                  <span className="px-1 py-0.5 bg-white/5 border border-white/10 text-white/50 font-mono text-[8px] rounded">
-                    {f.amps}
-                  </span>
+        <p className="font-mono text-[8px] text-white/30 mb-2.5 leading-relaxed">
+          {BOX_LOCATIONS[boxId]}
+        </p>
+
+        <div className="space-y-1">
+          {entries.map((f) => {
+            const color = colorForAmps(f.amps);
+            return (
+              <div key={f.id} className="py-1 px-1.5 rounded hover:bg-white/5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={color ? { backgroundColor: FUSE_COLORS[color].hex } : undefined}
+                      title={color ? FUSE_COLORS[color].name : undefined}
+                    />
+                    <span
+                      className={`px-1.5 py-0.5 rounded font-mono text-[9px] font-bold shrink-0 ${
+                        f.status === "spare"
+                          ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-300"
+                          : f.status === "unused"
+                          ? "bg-white/5 border border-white/10 text-white/30"
+                          : "bg-amber-500/10 border border-amber-500/30 text-amber-300"
+                      }`}
+                    >
+                      {f.id}
+                    </span>
+                    <span className="font-mono text-[9px] text-white/70 truncate">
+                      {f.status === "spare" ? `Repuesto (${f.amps})` : f.circuit}
+                    </span>
+                  </div>
+                  {f.status !== "spare" && (
+                    <span className="font-mono text-[9px] text-white/40 shrink-0">{f.amps}</span>
+                  )}
+                </div>
+                {f.serviceManualNote && (
+                  <p className="mt-0.5 ml-4 font-mono text-[8px] leading-relaxed text-cyan-300/50">
+                    📄 taller: {f.serviceManualNote}
+                  </p>
                 )}
-                <span className="font-mono text-[8px] text-white/30">p.{f.page}</span>
-              </span>
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
+
+        {query && entries.length === 0 && (
+          <p className="mt-2 font-mono text-[8px] text-white/30">Sin coincidencias en esta caja.</p>
+        )}
+
+        {isEngine && (
+          <figure className="mt-3">
+            <img
+              src={engineFuseBoxImg}
+              alt="Caja de fusibles del compartimiento del motor — manual de taller p.627"
+              className="w-full rounded-lg border border-white/10"
+              loading="lazy"
+            />
+            <figcaption className="font-mono text-[8px] text-white/30 mt-1">
+              Manual de taller p.627 — desmontaje de la caja de fusibles del compartimiento del motor.
+            </figcaption>
+          </figure>
+        )}
       </div>
     );
   };
@@ -571,10 +626,10 @@ function FusesSection() {
           </div>
           <div className="text-left">
             <span className="font-mono text-xs text-white font-bold tracking-wider block">
-              Fusibles y relés
+              Fusibles
             </span>
             <span className="font-mono text-[9px] text-white/40">
-              Caja interior + capó — {FUSES.length} referencias del manual
+              Leyenda del manual del propietario · {FUSES.length} fusibles
             </span>
           </div>
         </div>
@@ -598,15 +653,40 @@ function FusesSection() {
             </p>
           </div>
 
+          {/* Código de colores por amperaje */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 p-3 rounded-lg bg-white/5 border border-white/10">
+            <span className="font-mono text-[9px] text-white/50 uppercase font-bold tracking-widest mr-1">
+              Color = amperaje
+            </span>
+            {Object.entries(FUSE_COLORS).map(([key, c]) => (
+              <span key={key} className="flex items-center gap-1.5 font-mono text-[9px] text-white/60">
+                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: c.hex }} />
+                {c.name}
+              </span>
+            ))}
+          </div>
+
+          {/* Buscador */}
+          <div className="flex items-center gap-2">
+            <Search className="w-3.5 h-3.5 text-[#FF3D00] shrink-0" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder='Filtrar por posición o circuito (ej. "EF13", "ventilador", "airbag")...'
+              className="flex-1 input-field p-2 font-mono text-[10px] text-white rounded bg-black border border-white/10 outline-none"
+            />
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             {boxCard("engine")}
             {boxCard("cabin")}
           </div>
 
           <p className="font-mono text-[8px] leading-relaxed text-white/30">
-            El manual de taller no publica una leyenda completa de la caja de fusibles: esta lista recopila las
-            referencias documentadas por sistema con su página de trazabilidad. Si un circuito no aparece,
-            revisa la tapa de la caja de tu vehículo (habitáculo: panel lado pasajero; capó: junto a la batería).
+            Datos: manual del propietario MG 350 (proporcionado por el dueño). El manual de taller confirma con
+            página algunos fusibles (F05, F12, F21 y el ventilador EF13). Antes de extraer un fusible, revisa la
+            placa pegada al interior de la tapa de tu caja: es la referencia física definitiva.
           </p>
         </div>
       )}
