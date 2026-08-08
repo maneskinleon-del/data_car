@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Layers,
   CheckCircle,
@@ -16,10 +16,14 @@ import HistoryList from "./components/HistoryList";
 import MaintenancePlanner from "./components/MaintenancePlanner";
 import ServiceBackup from "./components/ServiceBackup";
 import MaintenanceModal from "./components/MaintenanceModal";
+import MaintenancePacks from "./components/MaintenancePacks";
 import DocumentsTab from "./components/DocumentsTab";
 import TechnicalDatabaseTab from "./components/TechnicalDatabase";
 
 import { VehicleSpecs, ServiceRecord } from "./types";
+import { VehicleTechnicalDatabaseV2, TechnicalComponentV2 } from "./types/technicalV2";
+import { attachPartsCatalog, getPartsFromDb } from "./lib/partsCatalogProvider";
+import mg350Base from "./data/mg350Base.json";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>("garage");
@@ -133,6 +137,26 @@ export default function App() {
       setToastMessage(null);
     }, 2500);
   };
+
+  // Base técnica precargada (mg350Base.json) + catálogo adjunto — para los
+  // packs de mantenimiento de la Tab 2. Se clona para no mutar el módulo.
+  const packDatabase = useMemo<VehicleTechnicalDatabaseV2>(() => {
+    const base = JSON.parse(JSON.stringify(mg350Base)) as VehicleTechnicalDatabaseV2;
+    attachPartsCatalog(base);
+    return base;
+  }, []);
+  const getParts = useMemo(() => (componentId: string) => getPartsFromDb(packDatabase, componentId), [packDatabase]);
+  const getComponentName = useMemo(
+    () => (componentId: string) => {
+      const all = Object.values(packDatabase.components) as TechnicalComponentV2[][];
+      for (const comps of all) {
+        const found = comps.find((c) => c.id === componentId);
+        if (found) return found.name;
+      }
+      return undefined;
+    },
+    [packDatabase]
+  );
 
   // Recalcula "km del último servicio" desde el historial (máximo km registrado)
   // y persiste specs solo si cambió. Misma regla que usa handleAddRecord.
@@ -357,6 +381,11 @@ export default function App() {
               lastServiceKm={specs.ultimoCambioKm}
               odometer={specs.odometroActual}
               onOdometerChange={(km) => setSpecs((prev) => ({ ...prev, odometroActual: km }))}
+              triggerToast={triggerToast}
+            />
+            <MaintenancePacks
+              getParts={getParts}
+              getComponentName={getComponentName}
               triggerToast={triggerToast}
             />
             <HistoryList
