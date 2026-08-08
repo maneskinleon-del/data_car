@@ -31,7 +31,7 @@ export default function App() {
   // 1. Core Vehicle Specs State (persistido en localStorage)
   const [specs, setSpecs] = useState<VehicleSpecs>(() => {
     const defaults: VehicleSpecs = {
-      chassis: "#8829-XP",
+      chassis: "LSJA16E37FG011194",
       marca: "MG 350",
       propietario: "Mangonz",
       estadoActivo: true,
@@ -300,7 +300,7 @@ export default function App() {
                       type="text"
                       value={specs.chassis}
                       onChange={(e) => setSpecs((prev) => ({ ...prev, chassis: e.target.value }))}
-                      className="bg-transparent border-none outline-none focus:bg-black/20 focus:rounded px-1 -mx-1 font-mono text-[10px] font-extrabold text-white w-24"
+                      className="bg-transparent border-none outline-none focus:bg-black/20 focus:rounded px-1 -mx-1 font-mono text-[10px] font-extrabold text-white w-44"
                     />
                   </span>
                   <span className="flex items-center gap-1.5 px-3.5 py-1.5 bg-white/5 border border-white/10 text-white font-mono text-[10px] font-extrabold rounded-sm skew-box">

@@ -582,6 +582,27 @@ export const COMPONENT_DEFS: ComponentDef[] = [
       },
     ],
   },
+  {
+    // Correa del alternador / accesorios (Poly-V) — el manual de taller no
+    // publica la referencia. El catálogo (Fase 2) la aporta: OEM SAIC
+    // 10025044, confirmada para el MG 350 1.5 (15S4U) según el VIN real
+    // del dueño (LSJA16E37FG011194) y compartida con MG 3/MG 5/Roewe 350.
+    id: "alternator_belt",
+    system: "electrico",
+    name: "Correa del Alternador (Poly-V)",
+    icon: "⛓️",
+    slots: [
+      {
+        id: "partNumber",
+        label: "Referencia",
+        concept: /correa|belt|alternador/i,
+        valuePattern: /\d{7,8}/,
+        unit: "ref",
+        scope: "never-publishes",
+        transform: (r) => r.trim(),
+      },
+    ],
+  },
 ];
 
 export function getComponentDef(id: string): ComponentDef | undefined {

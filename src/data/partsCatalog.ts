@@ -380,9 +380,30 @@ export const PARTS_CATALOG: CatalogEntry[] = [
       },
     ],
   },
+  // ── Correa del alternador (Poly-V) ────────────────────────────────────────
+  // El manual de taller NO publica la referencia. Confirmada 2026-08-08 por
+  // el DUEÑO contra el VIN real del vehículo (LSJA16E37FG011194, motor
+  // 15S4U 1.5 bencinero, MG 350 2015): OEM SAIC 10025044 — correa acanalada
+  // (Poly-V) que acciona el alternador y accesorios. Referencia compartida
+  // con MG 3 / MG 5 / Roewe 350 (mismo motor), común en el mercado.
+  {
+    componentId: "alternator_belt",
+    parts: [
+      {
+        oem: "10025044 (SAIC)",
+        aftermarket: [],
+        compatible: [
+          "MG 350 1.5 (15S4U, 2010-2015)",
+          "Roewe 350 1.5 (AP11)",
+          "MG 3 / MG 5 1.5 (mismo motor)",
+        ],
+        source: "user",
+        verified: true,
+        note: "Correa Poly-V del alternador/accesorios. Confirmada por el dueño contra el VIN LSJA16E37FG011194 (MG 350 2015, motor 15S4U). Buscar por el código 10025044; repuesto común, compartido con MG 3/MG 5/Roewe 350. Revisar por grietas o según kilometraje.",
+      },
+    ],
+  },
 ];
-
-/** Piezas del catálogo para un componente (vacío si el catálogo no lo cubre). */
 export function lookupCatalogParts(componentId: string): PartInfo[] {
   return PARTS_CATALOG.find((e) => e.componentId === componentId)?.parts ?? [];
 }

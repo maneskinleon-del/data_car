@@ -759,6 +759,32 @@
         "validationStatus": "plausible",
         "lastUpdated": "2026-08-06T20:29:07.166Z",
         "verified": false
+      },
+      {
+        "id": "alternator_belt",
+        "system": "electrico",
+        "name": "Correa del Alternador (Poly-V)",
+        "icon": "⛓️",
+        "specFields": [
+          {
+            "id": "partNumber",
+            "label": "Referencia",
+            "values": [
+              {
+                "value": "10025044",
+                "status": "extracted",
+                "validationStatus": "plausible",
+                "confidence": 1
+              }
+            ],
+            "dependsOnVariant": false,
+            "expectedUnit": "ref"
+          }
+        ],
+        "status": "extracted",
+        "validationStatus": "plausible",
+        "lastUpdated": "2026-08-08T13:30:00.000Z",
+        "verified": true
       }
     ],
     "neumaticos": [
