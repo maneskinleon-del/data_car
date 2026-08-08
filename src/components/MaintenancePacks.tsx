@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ShoppingCart,
   Check,
@@ -6,9 +6,53 @@ import {
   ChevronUp,
   Package,
   AlertTriangle,
+  Trash2,
+  Sparkles,
 } from "lucide-react";
 import { MAINTENANCE_PACKS, MaintenancePack } from "../data/maintenancePacks";
 import { PartInfo } from "../types/technicalV2";
+import { buildAISharePrompt } from "../lib/aiShare";
+
+const SHOPPING_STORAGE_KEY = "mg350_shopping_list";
+
+// Un item de compra persistido: lo mínimo que el pack aporta + referencia
+// resuelta en el momento de agregar (para no depender del catálogo al mostrar).
+interface ShoppingItem {
+  componentId: string;
+  name: string;
+  quantity: number;
+  reference: string;
+  verified: boolean;
+}
+
+interface ShoppingPack {
+  packId: string;
+  packName: string;
+  packIcon: string;
+  items: ShoppingItem[];
+  addedAt: number;
+}
+
+function loadShoppingList(): ShoppingPack[] {
+  try {
+    const raw = localStorage.getItem(SHOPPING_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed as ShoppingPack[];
+    }
+  } catch {
+    /* ignorar */
+  }
+  return [];
+}
+
+function saveShoppingList(list: ShoppingPack[]) {
+  try {
+    localStorage.setItem(SHOPPING_STORAGE_KEY, JSON.stringify(list));
+  } catch {
+    /* ignorar */
+  }
+}
 
 interface MaintenancePacksProps {
   getParts: (componentId: string) => PartInfo[];
@@ -52,6 +96,8 @@ interface PackCardProps {
   getParts: (componentId: string) => PartInfo[];
   getComponentName: (componentId: string) => string | undefined;
   triggerToast: (msg: string) => void;
+  onAddToCart: (pack: MaintenancePack, items: PackItemView[]) => void;
+  added: boolean;
 }
 
 function PackCard({
@@ -59,6 +105,8 @@ function PackCard({
   getParts,
   getComponentName,
   triggerToast,
+  onAddToCart,
+  added,
 }: PackCardProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -78,11 +126,12 @@ function PackCard({
 
   const allVerified = items.every((i) => !i.hasReference || i.verified);
 
-  const addToCart = () => {
-    const list = items
-      .map((i) => `${i.name} ×${i.quantity}${i.reference ? ` — ${i.reference}` : ""}`)
-      .join("\n");
-    triggerToast(`🛒 Pack "${pack.name}" agregado a compra:\n${list}`);
+  const handleAdd = () => {
+    if (added) {
+      triggerToast(`"${pack.name}" ya está en tu compra`);
+      return;
+    }
+    onAddToCart(pack, items);
   };
 
   return (
@@ -158,11 +207,15 @@ function PackCard({
           )}
 
           <button
-            onClick={addToCart}
-            className="w-full mt-1 flex items-center justify-center gap-2 py-2.5 bg-gradient-to-r from-[#FF3D00] to-[#FF8A00] hover:brightness-110 text-white font-mono text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all active:scale-[0.98] cursor-pointer"
+            onClick={handleAdd}
+            className={`w-full mt-1 flex items-center justify-center gap-2 py-2.5 font-mono text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all active:scale-[0.98] cursor-pointer ${
+              added
+                ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-300"
+                : "bg-gradient-to-r from-[#FF3D00] to-[#FF8A00] hover:brightness-110 text-white"
+            }`}
           >
-            <ShoppingCart className="w-3.5 h-3.5" />
-            Agregar pack a compra
+            {added ? <Check className="w-3.5 h-3.5" /> : <ShoppingCart className="w-3.5 h-3.5" />}
+            {added ? "En tu compra" : "Agregar pack a compra"}
           </button>
         </div>
       )}
@@ -175,6 +228,61 @@ export default function MaintenancePacks({
   getComponentName,
   triggerToast,
 }: MaintenancePacksProps) {
+  const [shoppingList, setShoppingList] = useState<ShoppingPack[]>(loadShoppingList);
+  const [showCart, setShowCart] = useState(false);
+
+  useEffect(() => {
+    saveShoppingList(shoppingList);
+  }, [shoppingList]);
+
+  const totalPacks = shoppingList.length;
+
+  const handleAddToCart = (pack: MaintenancePack, items: PackItemView[]) => {
+    const packItems: ShoppingItem[] = items.map((i) => ({
+      componentId: i.componentId,
+      name: i.name,
+      quantity: i.quantity,
+      reference: i.reference,
+      verified: i.verified,
+    }));
+    setShoppingList((prev) => [
+      ...prev,
+      { packId: pack.id, packName: pack.name, packIcon: pack.icon, items: packItems, addedAt: Date.now() },
+    ]);
+    triggerToast(`🛒 "${pack.name}" agregado a tu compra (${totalPacks + 1} pack(s) en total)`);
+  };
+
+  const handleRemovePack = (packId: string) => {
+    setShoppingList((prev) => prev.filter((p) => p.packId !== packId));
+    triggerToast("🗑️ Pack quitado de la compra");
+  };
+
+  const handleClearCart = () => {
+    setShoppingList([]);
+    triggerToast("🧹 Compra vaciada");
+  };
+
+  // Arma el prompt para pedirle a una IA los precios de TODO lo agregado.
+  const handleShareCart = () => {
+    const items = shoppingList.flatMap((p) =>
+      p.items.map((i) => ({
+        name: i.name,
+        quantity: i.quantity,
+        reference: i.reference,
+        hasReference: !!i.reference,
+      }))
+    );
+    const prompt = buildAISharePrompt({
+      vehicleLabel: "MG 350",
+      serviceName: "Lista de compra de repuestos",
+      km: 0,
+      items,
+    });
+    navigator.clipboard.writeText(prompt).then(() => {
+      triggerToast("📋 Prompt de compra copiado — pegá en tu IA");
+    });
+  };
+
   return (
     <div className="glass-panel rounded-xl border border-white/10 overflow-hidden">
       <div className="p-4 border-b border-white/5">
@@ -182,7 +290,7 @@ export default function MaintenancePacks({
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#FF3D00] to-[#FF8A00] flex items-center justify-center">
             <Package className="w-5 h-5 text-white" />
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <p className="font-display font-black text-white text-sm uppercase tracking-wider">
               Packs de mantenimiento
             </p>
@@ -190,8 +298,83 @@ export default function MaintenancePacks({
               Qué necesitas comprar para cada trabajo · referencias del catálogo real
             </p>
           </div>
+          <button
+            onClick={() => setShowCart(!showCart)}
+            className={`relative flex items-center gap-2 px-3 py-2 rounded font-mono text-[9px] font-bold uppercase tracking-widest border transition-all cursor-pointer ${
+              showCart
+                ? "bg-[#FF3D00] border-[#FF3D00] text-white"
+                : "bg-white/5 hover:bg-white/10 border-white/10 text-white/80"
+            }`}
+          >
+            <ShoppingCart className="w-3.5 h-3.5" />
+            Mi compra
+            {totalPacks > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[#FF3D00] text-white text-[9px] font-bold flex items-center justify-center">
+                {totalPacks}
+              </span>
+            )}
+          </button>
         </div>
       </div>
+
+      {showCart && (
+        <div className="p-4 border-b border-white/5 bg-white/2">
+          <div className="flex items-center justify-between mb-2">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-white/70">
+              🛒 Mi compra {totalPacks > 0 && `(${totalPacks} pack${totalPacks === 1 ? "" : "s"})`}
+            </p>
+            {shoppingList.length > 0 && (
+              <button
+                onClick={handleClearCart}
+                className="flex items-center gap-1 px-2 py-1 text-[9px] font-mono uppercase tracking-widest rounded bg-white/5 hover:bg-red-500/20 border border-white/10 text-white/60 hover:text-red-300 transition-all cursor-pointer"
+              >
+                <Trash2 className="w-3 h-3" /> Vaciar
+              </button>
+            )}
+          </div>
+
+          {shoppingList.length === 0 ? (
+            <p className="font-mono text-[9px] text-white/40 py-3 text-center">
+              Todavía no agregaste packs — tocá "Agregar pack a compra" en cualquiera.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {shoppingList.map((p) => (
+                <div key={p.packId} className="flex items-start justify-between gap-2 p-2.5 rounded bg-black/40 border border-white/10">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-mono text-[10px] font-bold text-white/90">
+                      {p.packIcon} {p.packName}
+                    </p>
+                    <div className="mt-1 space-y-0.5">
+                      {p.items.map((i) => (
+                        <p key={i.componentId} className="font-mono text-[8px] text-white/50 truncate">
+                          {i.name} ×{i.quantity}
+                          {i.reference ? ` — ${i.reference}` : " — ref. disponible"}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleRemovePack(p.packId)}
+                    className="p-1.5 rounded text-white/40 hover:text-red-300 hover:bg-red-500/10 transition-all cursor-pointer"
+                    title="Quitar de la compra"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+
+              <button
+                onClick={handleShareCart}
+                className="w-full flex items-center justify-center gap-2 py-2.5 mt-1 bg-gradient-to-r from-[#FF3D00] to-[#FF8A00] hover:brightness-110 text-white font-mono text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all active:scale-[0.98] cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                Compartir compra con IA (precios CLP)
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         {MAINTENANCE_PACKS.map((pack) => (
@@ -201,6 +384,8 @@ export default function MaintenancePacks({
             getParts={getParts}
             getComponentName={getComponentName}
             triggerToast={triggerToast}
+            onAddToCart={handleAddToCart}
+            added={shoppingList.some((p) => p.packId === pack.id)}
           />
         ))}
       </div>
