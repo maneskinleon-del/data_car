@@ -49,6 +49,7 @@ import {
 // Página 627 del manual de taller: desmontaje físico de la caja de fusibles
 // del compartimiento del motor (renderizada e integrada como asset local).
 import engineFuseBoxImg from "../assets/fuses/engine-fuse-box-p627.webp";
+import cabinFuseBoxImg from "../assets/fuses/cabin-fuse-box-lid.webp";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
@@ -588,6 +589,11 @@ function FusesSection() {
                     📄 taller: {f.serviceManualNote}
                   </p>
                 )}
+                {f.replacedWith && (
+                  <p className="mt-0.5 ml-4 font-mono text-[8px] leading-relaxed text-emerald-300/60">
+                    🔧 reemplazo: {f.replacedWith}
+                  </p>
+                )}
               </div>
             );
           })}
@@ -595,6 +601,21 @@ function FusesSection() {
 
         {query && entries.length === 0 && (
           <p className="mt-2 font-mono text-[8px] text-white/30">Sin coincidencias en esta caja.</p>
+        )}
+
+        {!isEngine && (
+          <figure className="mt-3">
+            <img
+              src={cabinFuseBoxImg}
+              alt="Tapa de la caja de fusibles de la cabina — fotografía del propietario"
+              className="w-full rounded-lg border border-white/10"
+              loading="lazy"
+            />
+            <figcaption className="font-mono text-[8px] text-white/30 mt-1">
+              Tapa de la caja de la cabina (lado izquierdo del tablero) — fotografía del propietario.
+              F28–F31 son fusibles de repuesto; el F02 (encendedor) se reemplazó con un repuesto de 15 A.
+            </figcaption>
+          </figure>
         )}
 
         {isEngine && (

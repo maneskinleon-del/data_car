@@ -28,6 +28,7 @@ export interface FuseEntry {
   color?: FuseColor;           // color según tabla del propietario (solo 7.5-30 A)
   circuit: string;             // función según el manual del propietario
   status?: "unused" | "spare"; // F18/F19/F27 sin uso · F28-F31 repuesto
+  replacedWith?: string;       // registro de reemplazo realizado (fecha + repuesto usado)
   serviceManualNote?: string;  // cruce verificado con el manual de taller
 }
 
@@ -75,7 +76,10 @@ export const FUSES: FuseEntry[] = [
 
   // ── CAJA DE LA CABINA DE PASAJEROS (interior) ────────────────────────────
   { id: "F01", box: "cabin", amps: "7.5 A", circuit: "Módulo de control (interruptor de contacto, posición 1)" },
-  { id: "F02", box: "cabin", amps: "15 A", circuit: "Encendedor de cigarrillos" },
+  {
+    id: "F02", box: "cabin", amps: "15 A", circuit: "Encendedor de cigarrillos",
+    replacedWith: "Repuesto de 15 A (F28–F31) instalado el 2026-08-08; el fusible original estaba averiado.",
+  },
   { id: "F03", box: "cabin", amps: "10 A", circuit: "Navegación / fuente de poder CD" },
   { id: "F04", box: "cabin", amps: "10 A", circuit: "Techo eléctrico, interruptor espejo" },
   {
