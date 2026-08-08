@@ -444,6 +444,10 @@ export default function App() {
         onUpdateRecord={handleUpdateRecord}
         editingRecord={editingRecord}
         currentKm={specs.ultimoCambioKm}
+        vehicleLabel={`MG 350 · chasis ${specs.chassis} · ${specs.propietario}`}
+        getParts={getParts}
+        getComponentName={getComponentName}
+        triggerToast={triggerToast}
       />
 
     </div>

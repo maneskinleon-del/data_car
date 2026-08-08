@@ -1,6 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { X, Calendar, DollarSign, PenTool, CheckCircle2 } from "lucide-react";
+import { X, Calendar, DollarSign, PenTool, CheckCircle2, Sparkles, ClipboardCopy, Check } from "lucide-react";
 import { ServiceRecord } from "../types";
+import { PartInfo } from "../types/technicalV2";
+import {
+  buildAISharePrompt,
+  parseAIResponse,
+  formatCLP,
+  resolveReference,
+  SERVICE_COMPONENT_IDS,
+} from "../lib/aiShare";
 
 interface MaintenanceModalProps {
   isOpen: boolean;
@@ -9,6 +17,10 @@ interface MaintenanceModalProps {
   onUpdateRecord?: (record: ServiceRecord) => void;
   editingRecord?: ServiceRecord | null;
   currentKm: number;
+  vehicleLabel: string;
+  getParts: (componentId: string) => PartInfo[];
+  getComponentName: (componentId: string) => string | undefined;
+  triggerToast: (msg: string) => void;
 }
 
 // "12 AGO 2026" (es-ES short, como se guarda el registro) → "2026-08-12"
@@ -44,6 +56,10 @@ export default function MaintenanceModal({
   onUpdateRecord,
   editingRecord,
   currentKm,
+  vehicleLabel,
+  getParts,
+  getComponentName,
+  triggerToast,
 }: MaintenanceModalProps) {
   const isEditing = !!editingRecord;
   const [name, setName] = useState(editingRecord?.name ?? "Cambio Aceite & Filtros");
@@ -54,6 +70,11 @@ export default function MaintenanceModal({
     editingRecord?.colorType ?? "primary"
   );
   const [success, setSuccess] = useState(false);
+
+  // Estado del "Compartir con IA": prompt generado, respuesta pegada y copiado.
+  const [aiPrompt, setAiPrompt] = useState<string | null>(null);
+  const [aiResponse, setAiResponse] = useState<string>("");
+  const [aiCopied, setAiCopied] = useState(false);
 
   // Sincroniza el estado cada vez que se abre el modal (nuevo o edición) o que
   // cambia el registro a editar. Sin esto, los valores previos quedarían
@@ -66,6 +87,9 @@ export default function MaintenanceModal({
     setKm(editingRecord ? String(editingRecord.km) : currentKm.toString());
     setCategory(editingRecord?.colorType ?? "primary");
     setSuccess(false);
+    setAiPrompt(null);
+    setAiResponse("");
+    setAiCopied(false);
   }, [isOpen, editingRecord, currentKm]);
 
   if (!isOpen) return null;
@@ -102,6 +126,47 @@ export default function MaintenanceModal({
       setSuccess(false);
       onClose();
     }, 1500);
+  };
+
+  // Arma el prompt de repuestos para el servicio seleccionado y lo copia al
+  // portapapeles. La IA lo usa para buscar precios chilenos reales.
+  const handleShareWithAI = () => {
+    const componentIds = SERVICE_COMPONENT_IDS[name] ?? [];
+    const items = componentIds.map((cid) => {
+      const parts = getParts(cid);
+      const ref = resolveReference(parts);
+      return {
+        name: getComponentName(cid) ?? cid,
+        quantity: 1,
+        reference: ref.text,
+        hasReference: ref.found,
+      };
+    });
+    const prompt = buildAISharePrompt({
+      vehicleLabel,
+      serviceName: name,
+      km: parseInt(km) || currentKm,
+      items,
+    });
+    setAiPrompt(prompt);
+    setAiResponse("");
+    setAiCopied(false);
+    navigator.clipboard.writeText(prompt).then(() => {
+      setAiCopied(true);
+      triggerToast("📋 Prompt copiado — pegalo en tu IA favorita");
+      setTimeout(() => setAiCopied(false), 2500);
+    });
+  };
+
+  // Parsea la respuesta pegada de la IA y setea el total formateado en CLP.
+  const handleApplyAIResponse = () => {
+    const parsed = parseAIResponse(aiResponse);
+    if (!parsed) {
+      triggerToast("⚠️ No encontré el total en la respuesta — pegá el JSON que pidió la IA");
+      return;
+    }
+    setCost(String(parsed.total));
+    triggerToast(`✅ Total seteado: ${formatCLP(parsed.total)}`);
   };
 
   return (
@@ -141,14 +206,72 @@ export default function MaintenanceModal({
               {isEditing ? "EDITAR MANTENIMIENTO" : "REGISTRAR MANTENIMIENTO"}
             </h3>
           </div>
-          <button 
-            type="button"
-            onClick={onClose}
-            className="text-white/60 hover:text-white transition-colors p-1 rounded-full hover:bg-white/5"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleShareWithAI}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-[9px] font-mono font-bold uppercase tracking-widest rounded transition-all active:scale-95 cursor-pointer"
+              title="Compartir este requerimiento con una IA para buscar repuestos y precios en Chile"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-[#FF8A00]" />
+              Compartir con IA
+            </button>
+            <button 
+              type="button"
+              onClick={onClose}
+              className="text-white/60 hover:text-white transition-colors p-1 rounded-full hover:bg-white/5"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
+
+        {/* Panel IA: prompt generado + pegar respuesta para setear precio CLP */}
+        {aiPrompt && (
+          <div className="px-6 py-4 border-b border-white/10 bg-gradient-to-br from-[#FF3D00]/5 to-[#FF8A00]/5">
+            <div className="flex items-center justify-between mb-2">
+              <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-white/60">
+                🤖 Compartir con IA
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(aiPrompt).then(() => {
+                    setAiCopied(true);
+                    triggerToast("📋 Prompt copiado");
+                    setTimeout(() => setAiCopied(false), 2000);
+                  });
+                }}
+                className="flex items-center gap-1 px-2.5 py-1 text-[9px] font-mono font-bold uppercase tracking-widest rounded bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 transition-all cursor-pointer"
+              >
+                {aiCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <ClipboardCopy className="w-3 h-3" />}
+                {aiCopied ? "Copiado" : "Copiar"}
+              </button>
+            </div>
+
+            <p className="font-mono text-[9px] text-white/40 mb-2 leading-relaxed">
+              Pegá el prompt en tu IA (ChatGPT, Gemini, Claude...) — te buscará precios
+              chilenos y responderá con el total. Después pegá su respuesta acá y aplicá.
+            </p>
+
+            <textarea
+              value={aiResponse}
+              onChange={(e) => setAiResponse(e.target.value)}
+              placeholder='Pegá acá la respuesta de la IA (debe incluir el JSON con "total")...'
+              rows={3}
+              className="w-full p-2.5 text-[10px] font-mono text-white rounded bg-black border border-white/10 outline-none placeholder:text-white/25 resize-y"
+            />
+            <div className="flex gap-2 mt-2">
+              <button
+                type="button"
+                onClick={handleApplyAIResponse}
+                className="flex-1 py-2 bg-gradient-to-r from-[#FF3D00] to-[#FF8A00] hover:brightness-110 text-white font-mono text-[10px] font-bold uppercase tracking-widest rounded transition-all active:scale-[0.98] cursor-pointer"
+              >
+                Aplicar total
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Content Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5 font-mono text-xs">
@@ -192,7 +315,7 @@ export default function MaintenanceModal({
           {/* Pricing & Odometer */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-white/50 uppercase font-bold tracking-widest text-[9px] mb-2">COSTO ESTIMADO ($)</label>
+              <label className="block text-white/50 uppercase font-bold tracking-widest text-[9px] mb-2">COSTO ESTIMADO ($ CLP)</label>
               <div className="relative">
                 <span className="absolute left-3 top-3 text-white/40 font-bold">$</span>
                 <input
@@ -202,9 +325,14 @@ export default function MaintenanceModal({
                   value={cost}
                   onChange={(e) => setCost(e.target.value)}
                   className="w-full input-field p-3 pl-7 text-white rounded bg-black border border-white/10 outline-none"
-                  placeholder="0.00"
+                  placeholder="0"
                 />
               </div>
+              <p className="mt-1 font-mono text-[9px] text-[#FF8A00]/80">
+                {cost && !isNaN(parseFloat(cost))
+                  ? formatCLP(Math.round(parseFloat(cost)))
+                  : "$0"}
+              </p>
             </div>
             <div>
               <label className="block text-white/50 uppercase font-bold tracking-widest text-[9px] mb-2">KILOMETRAJE ACTUAL</label>
