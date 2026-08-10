@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { MAINTENANCE_PACKS, MaintenancePack } from "../data/maintenancePacks";
 import { PartInfo } from "../types/technicalV2";
-import { buildAISharePrompt } from "../lib/aiShare";
+import { buildAISharePrompt, parseAIResponse, formatCLP } from "../lib/aiShare";
 
 const SHOPPING_STORAGE_KEY = "mg350_shopping_list";
 
@@ -23,6 +23,7 @@ interface ShoppingItem {
   quantity: number;
   reference: string;
   verified: boolean;
+  price?: number; // precio unitario CLP asignado desde la respuesta de la IA (null → sin asignar)
 }
 
 interface ShoppingPack {
@@ -52,6 +53,35 @@ function saveShoppingList(list: ShoppingPack[]) {
   } catch {
     /* ignorar */
   }
+}
+
+// Normaliza un nombre para comparar con el de la IA: minúsculas, sin acentos,
+// sin contenido entre paréntesis (refs), solo alfanumérico.
+function normalizeName(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\(.*?\)/g, " ")
+    .replace(/[^a-z0-9 ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Busca el precio unitario de un item en la respuesta de la IA.
+// Match tolerante: incluye en cualquiera de los dos sentidos ("Bujías NGK" ↔ "Bujías").
+function findPrice(
+  itemName: string,
+  repuestos: Array<{ nombre?: string; precio?: number }>
+): number | undefined {
+  const normItem = normalizeName(itemName);
+  if (!normItem) return undefined;
+  for (const r of repuestos) {
+    const normRep = normalizeName(r.nombre ?? "");
+    if (!normRep || typeof r.precio !== "number") continue;
+    if (normItem.includes(normRep) || normRep.includes(normItem)) return r.precio;
+  }
+  return undefined;
 }
 
 interface MaintenancePacksProps {
@@ -230,6 +260,7 @@ export default function MaintenancePacks({
 }: MaintenancePacksProps) {
   const [shoppingList, setShoppingList] = useState<ShoppingPack[]>(loadShoppingList);
   const [showCart, setShowCart] = useState(false);
+  const [aiPasteText, setAiPasteText] = useState("");
 
   useEffect(() => {
     saveShoppingList(shoppingList);
@@ -263,6 +294,51 @@ export default function MaintenancePacks({
   };
 
   // Arma el prompt para pedirle a una IA los precios de TODO lo agregado.
+  // Asigna los precios de la respuesta de la IA a los items de la compra.
+  const handleAssignPrices = () => {
+    const parsed = parseAIResponse(aiPasteText);
+    if (!parsed || parsed.repuestos.length === 0) {
+      triggerToast("⚠️ No encontré el JSON de precios — pegá la respuesta de la IA");
+      return;
+    }
+    const repuestos = parsed.repuestos as Array<{ nombre?: string; precio?: number }>;
+    let assigned = 0;
+    let missing = 0;
+    const updated: ShoppingPack[] = shoppingList.map((p) => ({
+      ...p,
+      items: p.items.map((i) => {
+        const price = findPrice(i.name, repuestos);
+        if (typeof price === "number" && price > 0) {
+          assigned++;
+          return { ...i, price };
+        }
+        if (i.price == null) missing++;
+        return i;
+      }),
+    }));
+    setShoppingList(updated);
+    const totalCLP = formatCLP(computeTotal(updated));
+    if (missing > 0) {
+      triggerToast(`💸 Precios asignados (${assigned}) — ${missing} item(s) sin precio en la respuesta`);
+    } else {
+      triggerToast(`💸 Precios asignados — total ${totalCLP}`);
+    }
+    setAiPasteText("");
+  };
+
+  // Total de la compra en CLP: suma de precio × cantidad de cada item con precio.
+  const computeTotal = (list: ShoppingPack[]): number =>
+    list.reduce(
+      (acc, p) =>
+        acc +
+        p.items.reduce((a, i) => a + (i.price != null ? i.price * i.quantity : 0), 0),
+      0
+    );
+
+  const cartTotal = computeTotal(shoppingList);
+  const pricedItems = shoppingList.flatMap((p) => p.items).filter((i) => i.price != null).length;
+  const totalItems = shoppingList.flatMap((p) => p.items).length;
+
   const handleShareCart = () => {
     const items = shoppingList.flatMap((p) =>
       p.items.map((i) => ({
@@ -350,6 +426,9 @@ export default function MaintenancePacks({
                         <p key={i.componentId} className="font-mono text-[8px] text-white/50 truncate">
                           {i.name} ×{i.quantity}
                           {i.reference ? ` — ${i.reference}` : " — ref. disponible"}
+                          {i.price != null && (
+                            <span className="text-emerald-300/80"> — {formatCLP(i.price)}</span>
+                          )}
                         </p>
                       ))}
                     </div>
@@ -371,6 +450,44 @@ export default function MaintenancePacks({
                 <Sparkles className="w-3.5 h-3.5" />
                 Compartir compra con IA (precios CLP)
               </button>
+
+              {/* ── Precios desde la respuesta de la IA ── */}
+              <div className="mt-2 p-2.5 rounded bg-black/40 border border-white/10 space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-white/60">
+                    💸 Precios desde la IA
+                  </p>
+                  {pricedItems > 0 && (
+                    <span className="font-mono text-[8px] text-emerald-300/80">
+                      {pricedItems}/{totalItems} con precio
+                    </span>
+                  )}
+                </div>
+                <textarea
+                  value={aiPasteText}
+                  onChange={(e) => setAiPasteText(e.target.value)}
+                  placeholder={"Pegá acá la respuesta JSON de la IA…"}
+                  rows={3}
+                  className="w-full input-field p-2 font-mono text-[10px] text-white rounded bg-black outline-none border border-white/10 resize-y placeholder:text-white/25"
+                />
+                <button
+                  onClick={handleAssignPrices}
+                  className="w-full flex items-center justify-center gap-2 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 hover:text-white font-mono text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all active:scale-[0.98] cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-[#FF8A00]" />
+                  Asignar precios
+                </button>
+                {cartTotal > 0 && (
+                  <div className="flex items-center justify-between pt-1 border-t border-white/10">
+                    <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-white/60">
+                      Total
+                    </p>
+                    <p className="font-mono text-sm font-black text-emerald-300">
+                      {formatCLP(cartTotal)}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
