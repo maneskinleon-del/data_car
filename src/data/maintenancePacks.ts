@@ -45,7 +45,7 @@ export const MAINTENANCE_PACKS: MaintenancePack[] = [
     icon: "🛢️",
     description: "Aceite de motor + filtro de aceite.",
     items: [
-      { componentId: "engine_oil", quantity: 4.5, note: "5W/40 · ACEA A3/B3 · 4,5 L" },
+      { componentId: "engine_oil", quantity: 4.5, note: "5W/40 · ACEA A3/B3,B4 · 4,5 L" },
       { componentId: "oil_filter", quantity: 1, note: "Hilo 13/16\" — verificar rosca al comprar" },
     ],
   },
@@ -103,7 +103,7 @@ export const MAINTENANCE_PACKS: MaintenancePack[] = [
       { componentId: "spark_plug", quantity: 4, note: "NGK PFR6Y" },
       { componentId: "air_filter", quantity: 1 },
       { componentId: "cabin_filter", quantity: 1 },
-      { componentId: "engine_oil", quantity: 4.5, note: "5W/40 · ACEA A3/B3" },
+      { componentId: "engine_oil", quantity: 4.5, note: "5W/40 · ACEA A3/B3,B4" },
       { componentId: "oil_filter", quantity: 1, note: "Hilo 13/16\"" },
       { componentId: "coolant", quantity: 7.3, note: "Etileno glicol OAT" },
       { componentId: "brake_fluid", quantity: 0.75, note: "DOT4 · 0,75 L" },
