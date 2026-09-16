@@ -23,6 +23,7 @@ interface ShoppingItem {
   quantity: number;
   reference: string;
   verified: boolean;
+  note?: string; // detalle técnico del pack (ej: "5W/40 · ACEA A3/B3,B4 · 4,5 L")
   price?: number; // precio unitario CLP asignado desde la respuesta de la IA (null → sin asignar)
 }
 
@@ -88,6 +89,9 @@ interface MaintenancePacksProps {
   getParts: (componentId: string) => PartInfo[];
   getComponentName: (componentId: string) => string | undefined;
   triggerToast: (msg: string) => void;
+  vehicleLabel?: string; // ej: "MG 350 · chasis LSJA16E37FG011194"
+  vin?: string;          // chasis/VIN del vehículo para reforzar compatibilidad
+  km?: number;           // kilometraje actual del vehículo
 }
 
 interface PackItemView {
@@ -257,6 +261,9 @@ export default function MaintenancePacks({
   getParts,
   getComponentName,
   triggerToast,
+  vehicleLabel = "MG 350",
+  vin,
+  km = 0,
 }: MaintenancePacksProps) {
   const [shoppingList, setShoppingList] = useState<ShoppingPack[]>(loadShoppingList);
   const [showCart, setShowCart] = useState(false);
@@ -275,6 +282,7 @@ export default function MaintenancePacks({
       quantity: i.quantity,
       reference: i.reference,
       verified: i.verified,
+      note: i.note,
     }));
     setShoppingList((prev) => [
       ...prev,
@@ -346,12 +354,14 @@ export default function MaintenancePacks({
         quantity: i.quantity,
         reference: i.reference,
         hasReference: !!i.reference,
+        note: i.note,
       }))
     );
     const prompt = buildAISharePrompt({
-      vehicleLabel: "MG 350",
+      vehicleLabel,
       serviceName: "Lista de compra de repuestos",
-      km: 0,
+      km,
+      vin,
       items,
     });
     navigator.clipboard.writeText(prompt).then(() => {
