@@ -394,5 +394,53 @@ console.log(`\n=== PRUEBAS aiShare — carrito → prompt + evidencia ===\n`);
   );
 }
 
+// ── 19. URL directa obligatoria para precio numérico ─────────────────────────
+{
+  const prompt = buildAISharePrompt({
+    vehicleLabel: "MG 350", serviceName: "Lista", km: 0, items: [spark],
+  });
+  check(
+    "URL directa: precio numérico requiere URL que identifique la publicación específica",
+    prompt.includes("\"url\" debe identificar directamente la publicación, ficha de producto o página específica"),
+    "regla URL directa"
+  );
+}
+
+// ── 20. Prohibidos como respaldo de precio ───────────────────────────────────
+{
+  const prompt = buildAISharePrompt({
+    vehicleLabel: "MG 350", serviceName: "Lista", km: 0, items: [spark],
+  });
+  check(
+    "URL directa: prohíbe dominios raíz/categoría/listado/resultados/buscador/agregador",
+    prompt.includes("No uses dominios raíz, categorías, resultados de búsqueda, listados generales, buscadores ni páginas agregadoras"),
+    "lista de prohibidos"
+  );
+}
+
+// ── 21. Listado sin publicación concreta → precio null ────────────────────────
+{
+  const prompt = buildAISharePrompt({
+    vehicleLabel: "MG 350", serviceName: "Lista", km: 0, items: [spark],
+  });
+  check(
+    "URL directa: listado sin publicación concreta → precio null",
+    prompt.includes("precio solo puede verificarse mediante una página de listado y no puedes identificar la publicación/producto concreto, devuelve \"precio\": null"),
+    "fallback null"
+  );
+}
+
+// ── 22. URL puede conservarse con precio null ─────────────────────────────────
+{
+  const prompt = buildAISharePrompt({
+    vehicleLabel: "MG 350", serviceName: "Lista", km: 0, items: [spark],
+  });
+  check(
+    "URL directa: URL válida como evidencia aunque precio sea null",
+    prompt.includes("Una URL puede conservarse como evidencia de un producto encontrado aunque \"precio\" sea null"),
+    "URL nullable"
+  );
+}
+
 console.log(`\n=== RESULTADO: ${passes} ✅ / ${failures} ❌ ===\n`);
 process.exit(failures > 0 ? 1 : 0);
