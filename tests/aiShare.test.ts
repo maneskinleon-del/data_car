@@ -160,10 +160,12 @@ console.log(`\n=== PRUEBAS aiShare — carrito → prompt + evidencia ===\n`);
     vin: "LSJA16E37FG011194",
     items: [spark, spark, spark, { ...spark, quantity: 1 }],
   });
+  const repSection = prompt.split("\nRepuestos")[1]?.split("\nInstrucciones")[0] ?? "";
+  const bujiasLines = repSection.split("\n").filter((l) => l.includes("Bujías"));
   check(
     "Prompt: una sola línea 'Bujías' pese a 4 entradas ×4,×4,×4,×1",
-    countLines(prompt, "Bujías") === 1,
-    `líneas="${countLines(prompt, "Bujías")}"`
+    bujiasLines.length === 1,
+    `líneas="${bujiasLines.length}"`
   );
   // max(4,4,4,1) = 4
   check(
@@ -362,9 +364,10 @@ console.log(`\n=== PRUEBAS aiShare — carrito → prompt + evidencia ===\n`);
     vehicleLabel: "MG 350", serviceName: "Lista", km: 0, items: [spark],
   });
   check(
-    "Total: instrucción que null NO se suma",
-    prompt.includes("\"precio\": null, NO debe sumarse al total") &&
-    prompt.includes("suma exclusiva de los precios numéricos verificados"),
+    "Total: instrucción que null NO se suma y total = suma de subtotales",
+    prompt.includes("suma exclusiva de los subtotales numéricos verificados") &&
+    prompt.includes("los subtotales null NO se suman") &&
+    prompt.includes("NUNCA calcules 'total' como la suma de 'precio' ni de 'precio_unitario'"),
     "regla total"
   );
 }
@@ -439,6 +442,143 @@ console.log(`\n=== PRUEBAS aiShare — carrito → prompt + evidencia ===\n`);
     "URL directa: URL válida como evidencia aunque precio sea null",
     prompt.includes("Una URL puede conservarse como evidencia de un producto encontrado aunque \"precio\" sea null"),
     "URL nullable"
+  );
+}
+
+// ── 23. Cantidad requerida vs precio unitario/envase ─────────────────────────
+{
+  const prompt = buildAISharePrompt({
+    vehicleLabel: "MG 350", serviceName: "Lista", km: 0, items: [spark],
+  });
+  check(
+    "Cantidad: distingue precio de presentación vs costo de la compra",
+    prompt.includes("precio de la presentación/publicación consultada") &&
+    prompt.includes("NO es el costo total del requerimiento"),
+    "semántica precio_unitario"
+  );
+  check(
+    "Cantidad: define cantidad_requerida / cantidad_comercial / subtotal",
+    prompt.includes("'cantidad_requerida' es la cantidad que pide la línea") &&
+    prompt.includes("'cantidad_comercial' es el número de piezas/envases") &&
+    prompt.includes("'subtotal' es el costo real"),
+    "campos de cantidad"
+  );
+  check(
+    "Cantidad: subtotal = precio_unitario × cantidad_comercial",
+    prompt.includes("precio_unitario' × 'cantidad_comercial"),
+    "fórmula subtotal"
+  );
+  check(
+    "Cantidad: no tomar precio publicado como si cubriera la cantidad",
+    prompt.includes("Nunca tomes el precio de una publicación como si ya cubriera la cantidad solicitada"),
+    "anti-interpretación errónea"
+  );
+}
+
+// ── 24. Ejemplo de envases en sampleJson ────────────────────────────────────
+{
+  const prompt = buildAISharePrompt({
+    vehicleLabel: "MG 350", serviceName: "Lista", km: 0, items: [spark],
+  });
+  check(
+    "SampleJson: ejemplo bujías ×4 con subtotal 56.000",
+    prompt.includes("\"cantidad_requerida\": 4") && prompt.includes("\"cantidad_comercial\": 4") && prompt.includes("\"subtotal\": 56000"),
+    "bujías subtotal"
+  );
+  check(
+    "SampleJson: ejemplo aceite envase 4L → 2 envases, subtotal 112.000",
+    prompt.includes("\"cantidad_requerida\": 4.5") && prompt.includes("\"cantidad_comercial\": 2") && prompt.includes("\"subtotal\": 112000"),
+    "aceite envases"
+  );
+  check(
+    "SampleJson: total = suma de subtotales (168.000)",
+    prompt.includes("\"total\": 168000"),
+    "total subtotales"
+  );
+}
+
+// ── 25. SampleJson: cada objeto incluye los 13 campos en orden ───────────────
+{
+  const prompt = buildAISharePrompt({
+    vehicleLabel: "MG 350", serviceName: "Lista", km: 0, items: [spark],
+  });
+  const before9 = prompt.split("\n9. ")[0];
+  const start = before9.indexOf("{");
+  const parsed = JSON.parse(before9.slice(start));
+  const fields = [
+    "nombre", "referencia_solicitada", "referencia_encontrada",
+    "precio", "precio_unitario", "cantidad_requerida",
+    "cantidad_comercial", "subtotal", "tienda", "url",
+    "compatibilidad", "vin", "observacion",
+  ];
+  const allHaveAllFields = parsed.repuestos.every((r: Record<string, unknown>) =>
+    fields.every((f) => Object.prototype.hasOwnProperty.call(r, f)) &&
+    JSON.stringify(Object.keys(r)) === JSON.stringify(fields)
+  );
+  check(
+    "SampleJson: 3 repuestos, cada uno con los 13 campos en orden exacto",
+    parsed.repuestos.length === 3 && allHaveAllFields,
+    `repuestos=${parsed.repuestos.length} orden=${allHaveAllFields ? "ok" : "falla"}`
+  );
+  check(
+    "SampleJson: ejemplo bujías precio 14000 × 4 → subtotal 56000",
+    parsed.repuestos[0].cantidad_requerida === 4 &&
+      parsed.repuestos[0].cantidad_comercial === 4 &&
+      parsed.repuestos[0].subtotal === 56000,
+    `subtotal=${parsed.repuestos[0].subtotal}`
+  );
+  check(
+    "SampleJson: ejemplo aceite envase 4L precio 56000 × 2 envases → subtotal 112000",
+    parsed.repuestos[1].cantidad_requerida === 4.5 &&
+      parsed.repuestos[1].cantidad_comercial === 2 &&
+      parsed.repuestos[1].subtotal === 112000,
+    `subtotal=${parsed.repuestos[1].subtotal}`
+  );
+  check(
+    "SampleJson: total = suma de subtotales ≠ suma de precios unitarios",
+    parsed.total === 168000,
+    `total=${parsed.total}`
+  );
+  check(
+    "SampleJson: precio no verificable → null en precio_unitario/cantidad_comercial/subtotal",
+    parsed.repuestos[2].precio === null &&
+      parsed.repuestos[2].precio_unitario === null &&
+      parsed.repuestos[2].cantidad_comercial === null &&
+      parsed.repuestos[2].subtotal === null &&
+      parsed.repuestos[2].cantidad_requerida === 4.5,
+    "objeto null ok"
+  );
+}
+
+// ── 26. Nunca calcular precio del envase × litros ────────────────────────────
+{
+  const prompt = buildAISharePrompt({
+    vehicleLabel: "MG 350", serviceName: "Lista", km: 0, items: [spark],
+  });
+  check(
+    "Cantidad: prohibe multiplicar precio del envase por litros (nunca 56000 × 4,5)",
+    prompt.includes("nunca 56000 × 4,5") &&
+    prompt.includes("multiplica el precio del envase solo por la cantidad real de envases"),
+    "anti 56000×4,5"
+  );
+}
+
+// ── 27. Instrucción 9: 13 campos obligatorios en cada objeto ─────────────────
+{
+  const prompt = buildAISharePrompt({
+    vehicleLabel: "MG 350", serviceName: "Lista", km: 0, items: [spark],
+  });
+  check(
+    "Schema: instrucción 9 exige los 13 campos en todos los repuestos",
+    prompt.includes("Cada objeto de 'repuestos' debe incluir SIEMPRE los campos del ejemplo, en este orden") &&
+    prompt.includes("precio, precio_unitario, cantidad_requerida, cantidad_comercial, subtotal, tienda, url, compatibilidad, vin, observacion"),
+    "13 campos"
+  );
+  check(
+    "Schema: null en no verificable conserva cantidad_requerida",
+    prompt.includes("devuelve null en 'precio', 'precio_unitario', 'cantidad_comercial' y 'subtotal'") &&
+    prompt.includes("conserva 'cantidad_requerida' cuando se conozca"),
+    "regla null"
   );
 }
 

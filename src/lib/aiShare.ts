@@ -164,29 +164,52 @@ export function buildAISharePrompt(opts: AISharePromptOptions): string {
   const sampleJson = `{
   "repuestos": [
     {
-      "nombre": "Pastillas de freno delanteras",
-      "referencia_solicitada": "10026870",
-      "referencia_encontrada": "10026870",
-      "precio": 27970,
+      "nombre": "Bujías (NGK PFR6Y)",
+      "referencia_solicitada": "NGK PFR6Y",
+      "referencia_encontrada": "NGK PFR6Y",
+      "precio": 14000,
+      "precio_unitario": 14000,
+      "cantidad_requerida": 4,
+      "cantidad_comercial": 4,
+      "subtotal": 56000,
       "tienda": "Mercado Libre Chile",
-      "url": "https://publicacion.example.com/auto/10026870",
-      "compatibilidad": "declarada por la publicacion",
+      "url": "https://publicacion.example.com/bujias/p/NGK-PFR6Y",
+      "compatibilidad": "referencia coincidente con la solicitada",
       "vin": "no validado por la publicacion",
       "observacion": null
     },
     {
-      "nombre": "Aceite de motor",
+      "nombre": "Aceite de motor 5W/40",
+      "referencia_solicitada": "5W/40 ACEA A3/B4",
+      "referencia_encontrada": "Total Quartz 9000 5W-40 (envase 4 L)",
+      "precio": 56000,
+      "precio_unitario": 56000,
+      "cantidad_requerida": 4.5,
+      "cantidad_comercial": 2,
+      "subtotal": 112000,
+      "tienda": "Mercado Libre Chile",
+      "url": "https://publicacion.example.com/aceite/p/total-9000-5w40",
+      "compatibilidad": "declarada por la publicacion",
+      "vin": "no validado por la publicacion",
+      "observacion": "Envase de 4 L no cubre 4,5 L requeridos → 2 envases"
+    },
+    {
+      "nombre": "Aceite de motor alternativo encontrado",
       "referencia_solicitada": "5W/40 ACEA A3/B4",
       "referencia_encontrada": "5W-30 ACEA C3",
       "precio": null,
+      "precio_unitario": null,
+      "cantidad_requerida": 4.5,
+      "cantidad_comercial": null,
+      "subtotal": null,
       "tienda": "Mercado Libre Chile",
-      "url": "https://publicacion.example.com/aceite",
+      "url": "https://listado.mercadolibre.cl/aceites",
       "compatibilidad": "no verificada",
       "vin": "no validado por la publicacion",
       "observacion": "Encontrado 5W-30 C3, no cumple 5W/40 A3/B4"
     }
   ],
-  "total": 27970
+  "total": 168000
 }`;
 
   return [
@@ -207,8 +230,9 @@ export function buildAISharePrompt(opts: AISharePromptOptions): string {
     "7. Fluidos: conserva los requisitos técnicos de la nota (viscosidad, norma ACEA/API, tipo de refrigerante, capacidad en litros — p. ej. 5W/40 · ACEA A3/B3,B4 · 4,5 L). No cambies silenciosamente un fluido: si una variante no cumple la especificación, no la presentes como compatible. Para productos vendidos en envases, conserva la capacidad requerida del vehículo como referencia técnica y calcula la cantidad mínima de envases necesarios para cubrirla. No reduzcas la capacidad técnica solicitada a la capacidad de un solo envase (p. ej. refrigerante 7,3 L → 2 envases de 4 L, no un solo envase de 4 L).",
     "8. Devuelve EXCLUSIVAMENTE un objeto JSON válido (sin texto alrededor, sin markdown) con esta forma:",
     sampleJson,
-    "9. 'nombre', 'precio' y 'tienda' son obligatorios siempre. 'referencia_solicitada', 'referencia_encontrada', 'url', 'compatibilidad', 'vin' y 'observacion': complétalos cuando puedas determinarlos con evidencia — nunca los inventes.",
-    "10. 'precio' y 'total' deben ser números enteros en CLP (sin puntos ni signo $). Si un repuesto tiene \"precio\": null, NO debe sumarse al total. 'total' es la suma exclusiva de los precios numéricos verificados.",
+    "9. Cada objeto de 'repuestos' debe incluir SIEMPRE los campos del ejemplo, en este orden: nombre, referencia_solicitada, referencia_encontrada, precio, precio_unitario, cantidad_requerida, cantidad_comercial, subtotal, tienda, url, compatibilidad, vin, observacion. Cuando el precio no sea verificable, devuelve null en 'precio', 'precio_unitario', 'cantidad_comercial' y 'subtotal', conserva 'cantidad_requerida' cuando se conozca y explica el motivo en 'observacion'. Nunca inventes campos ni valores.",
+    "10. Distingue precio de presentación publicada vs costo para satisfacer la cantidad solicitada: 'precio' (y su alias 'precio_unitario') es el precio de la presentación/publicación consultada, expresado por pieza o por envase — NO es el costo total del requerimiento. 'cantidad_requerida' es la cantidad que pide la línea de la app (p. ej. Bujías ×4 → 4 bujías; Aceite ×4,5 → 4,5 litros). 'cantidad_comercial' es el número de piezas/envases que hay que comprar para cubrir 'cantidad_requerida' (p. ej. bujías: 4; aceite en envases de 4 L: 2). 'subtotal' es el costo real = 'precio_unitario' × 'cantidad_comercial'. Cuando una presentación sea por envase con capacidad menor a la requerida, calcula la cantidad mínima de envases conforme a la regla de envases de la instrucción 7. Nunca tomes el precio de una publicación como si ya cubriera la cantidad solicitada: NO multipliques el precio del envase por la cantidad en litros del requerimiento (nunca 56000 × 4,5); multiplica el precio del envase solo por la cantidad real de envases.",
+    "11. 'precio', 'precio_unitario' y 'total' deben ser números enteros en CLP (sin puntos ni signo $). 'total' = suma exclusiva de los subtotales numéricos verificados; los subtotales null NO se suman. NUNCA calcules 'total' como la suma de 'precio' ni de 'precio_unitario'.",
   ]
     .filter((line): line is string => line != null)
     .join("\n");
