@@ -30,6 +30,7 @@ export interface AIShareItem {
   reference: string;     // referencia preferida (OEM/aftermarket) o ""
   hasReference: boolean; // false → "referencia disponible"
   note?: string;         // detalle técnico (ej: "5W/40 · ACEA A3/B3,B4 · 4,5 L")
+  componentId?: string;  // id del catálogo (ej: "spark_plug") — identidad estable para dedup
 }
 
 export interface AISharePromptOptions {
@@ -63,38 +64,139 @@ export function resolveReference(parts: PartInfo[]): {
   return { text: "", verified: false, found: false };
 }
 
+// Evidencia que la IA puede aportar por repuesto en el JSON de respuesta.
+// Los campos que la UI consume siguen siendo nombre/precio/tienda; el resto
+// se conserva en el item del carrito para auditoría posterior.
+export interface RepuestoEvidencia {
+  nombre?: string;
+  precio?: number;
+  tienda?: string;
+  referencia_solicitada?: string; // referencia que la app pidió buscar
+  referencia_encontrada?: string; // referencia que la publicación declara
+  url?: string;                   // publicación/anuncio identificable
+  compatibilidad?: string;        // ver estados en el prompt
+  vin?: string;                   // "no validado por la publicación" por defecto
+  observacion?: string;           // ej: "equivalente usado, OEM exacto no publicado"
+}
+
+// Normaliza una cadena para comparación tolerante: minúsculas, sin acentos,
+// sin contenido entre paréntesis (refs), solo alfanumérico.
+function normKey(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\(.*?\)/g, " ")
+    .replace(/[^a-z0-9 ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Consolida los items del carrito ANTES de construir el prompt.
+// Identidad: componente (componentId) + referencia solicitada. Dos items
+// representan el MISMO repuesto solo si comparten esa identidad; si tienen el
+// mismo nombre pero distinto componente o distinta referencia, se conservan
+// separados (son productos distintos). Solo cuando no hay ni componente ni
+// referencia se cae al nombre para no colapsar productos ignorables.
+//
+// Semántica de quantity: cada pack declara las unidades físicas que el
+// vehículo necesita para ese trabajo (p. ej. 4 bujías = 4 cilindros).
+// Packs distintos pueden mencionar el mismo componente con la misma
+// cantidad (p. ej. "Afinamiento" y "Encendido" ambas ×4 spark_plug)
+// porque representan la MISMA pieza física del vehículo vista desde
+// trabajos distintos — NO son cantidades independientes sumables.
+// Consolidamos con Math.max(): toma la mayor cantidad declarada por el
+// usuario sin inventar unidades adicionales.
+export function normalizeCartItems(items: AIShareItem[]): AIShareItem[] {
+  const merged = new Map<string, AIShareItem>();
+  for (const it of items) {
+    const compId = (it.componentId ?? "").trim();
+    const ref = (it.reference ?? "").trim();
+    const key = compId || ref ? `${compId}::${ref.toUpperCase()}` : normKey(it.name);
+    const cur = merged.get(key);
+    if (!cur) {
+      merged.set(key, { ...it });
+      continue;
+    }
+    // max, no suma: mismo componente = misma pieza física del vehículo
+    cur.quantity = Math.max(cur.quantity, it.quantity);
+    if (!cur.note && it.note) cur.note = it.note;
+    if (!cur.reference && it.reference) cur.reference = it.reference;
+    if (!cur.hasReference && it.hasReference) cur.hasReference = it.hasReference;
+  }
+  return Array.from(merged.values());
+}
+
+// Busca el repuesto de la respuesta de la IA correspondiente a un item del
+// carrito (match tolerante bidireccional por nombre). Devuelve la evidencia
+// COMPLETA del repuesto (o undefined si no hay match con precio numérico).
+export function findRepuesto(
+  itemName: string,
+  repuestos: RepuestoEvidencia[]
+): RepuestoEvidencia | undefined {
+  const norm = normKey(itemName);
+  if (!norm) return undefined;
+  for (const r of repuestos) {
+    const nr = normKey(r.nombre ?? "");
+    if (!nr || typeof r.precio !== "number") continue;
+    if (norm.includes(nr) || nr.includes(norm)) return r;
+  }
+  return undefined;
+}
+
 // Arma el prompt listo para pegar en cualquier IA. Pide explícitamente:
-//  - precios de mercado chileno en tiendas reales (Mercado Libre CL, Sodimac Auto,
-//    Autoparts, etc.)
-//  - formato CLP chileno con separador de miles ($50.000)
-//  - respuesta en JSON para poder setear el total automáticamente.
+//  - precios de mercado chileno en tiendas reales con publicación identificable
+//  - NO inventar precios ni equivalentes no demostrados
+//  - distinguir compatibilidad declarada vs. inferida vs. confirmada por VIN
+//  - formato CLP + JSON para poder setear el total automáticamente
+// Normaliza los items (dedup por componente+referencia) antes de armar las líneas.
 export function buildAISharePrompt(opts: AISharePromptOptions): string {
-  const lines = opts.items.map((it) => {
+  const lines = normalizeCartItems(opts.items).map((it) => {
     const ref = it.hasReference ? ` (ref: ${it.reference})` : " (referencia: buscar compatible)";
     const note = it.note ? ` · ${it.note}` : "";
     return `  - ${it.name} ×${it.quantity}${ref}${note}`;
   });
 
   const vinLine = opts.vin
-    ? `VIN / chasis: ${opts.vin} (úsalo para confirmar compatibilidad exacta al buscar).`
+    ? `VIN / chasis: ${opts.vin}. Usa el VIN como dato de identificación/contraste al filtrar resultados, pero NO afirmes compatibilidad exacta por VIN salvo que la publicación realice esa validación: cualquier afirmación de compatibilidad requiere la evidencia de la fuente.`
     : null;
+
+  const sampleJson = `{
+  "repuestos": [
+    {
+      "nombre": "Pastillas de freno delanteras",
+      "referencia_solicitada": "10026870",
+      "referencia_encontrada": "10026870",
+      "precio": 27970,
+      "tienda": "Mercado Libre Chile",
+      "url": "https://publicacion.example.com/auto/10026870",
+      "compatibilidad": "declarada por la publicacion",
+      "vin": "no validado por la publicacion",
+      "observacion": null
+    }
+  ],
+  "total": 27970
+}`;
 
   return [
     `Busca el precio actual en Chile de los siguientes repuestos para un ${opts.vehicleLabel}.`,
     vinLine,
     `Trabajo: ${opts.serviceName}. Kilometraje: ${opts.km.toLocaleString("es-CL")} km.`,
     "",
-    "Repuestos:",
+    "Repuestos (referencias provistas por la app, verificadas en el catálogo):",
     ...lines,
     "",
     "Instrucciones:",
-    "1. Busca precios reales en tiendas chilenas (Mercado Libre Chile, Sodimac Auto, Autoparts, Construmart, etc.).",
-    "2. Si una referencia OEM exacta no aparece, usa la equivalente más cercana y acláralo.",
-    "3. Para fluidos (aceite, refrigerante, etc.) respeta viscosidad, norma ACEA/API y litros indicados en la nota técnica.",
-    "4. Devuelve EXCLUSIVAMENTE un objeto JSON válido (sin texto alrededor, sin markdown) con esta forma:",
-    '{"repuestos": [{"nombre": "Aceite de motor", "precio": 50000, "tienda": "Mercado Libre Chile"}], "total": 150000}',
-    "5. El campo 'precio' y 'total' deben ser números enteros en CLP (sin puntos ni signo $).",
-    "6. Formatea el total en tu respuesta con formato chileno: $150.000",
+    "1. Busca precios reales en tiendas chilenas (Mercado Libre Chile, Sodimac Auto, Autoparts, Construmart, etc.). Cada precio debe estar respaldado por una publicación identificable (incluye su 'url'). NUNCA inventes un precio ni lo estimes: si no puedes verificarlo, devuelve \"precio\": null y explica el motivo en \"observacion\". No rellenes precios ausentes.",
+    "2. Las referencias indicadas en cada línea (p. ej. UJ-1797, NGK PFR6Y, LPW 100180, 10026870, 10030811, 10025044) son referencias de búsqueda verificadas por la app. Úsalas como criterio de búsqueda; no las reemplaces por otra referencia que encuentres sin declararlo en \"observacion\".",
+    "3. Si el OEM exacto no aparece, puedes buscar equivalentes de marcas reconocidas (MANN, MAHLE, BOSCH, NGK, DENSO...) y debes declararlo en \"observacion\". Una coincidencia de nombre/modelo NO equivale a compatibilidad.",
+    "4. Clasifica cada repuesto en \"compatibilidad\" con UNO de estos estados: \"referencia coincidente con la solicitada\", \"declarada por la publicación/tienda\", \"inferida por modelo/año/motor\", \"confirmada por VIN\" o \"no verificada\".",
+    "5. En \"vin\" indica \"no validado por la publicación\" salvo que la publicación demuestre una validación real del VIN. Tener el VIN del vehículo NO demuestra compatibilidad exacta.",
+    "6. Fluidos: conserva los requisitos técnicos de la nota (viscosidad, norma ACEA/API, tipo de refrigerante, capacidad en litros — p. ej. 5W/40 · ACEA A3/B3,B4 · 4,5 L). No cambies silenciosamente un fluido: si una variante no cumple la especificación, no la presentes como compatible.",
+    "7. Devuelve EXCLUSIVAMENTE un objeto JSON válido (sin texto alrededor, sin markdown) con esta forma:",
+    sampleJson,
+    "8. 'nombre', 'precio' y 'tienda' son obligatorios siempre. 'referencia_solicitada', 'referencia_encontrada', 'url', 'compatibilidad', 'vin' y 'observacion': complétalos cuando puedas determinarlos con evidencia — nunca los inventes.",
+    "9. 'precio' y 'total' deben ser números enteros en CLP (sin puntos ni signo $). 'total' es la suma de los precios verificados.",
   ]
     .filter((line): line is string => line != null)
     .join("\n");

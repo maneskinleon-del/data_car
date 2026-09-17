@@ -11,7 +11,13 @@ import {
 } from "lucide-react";
 import { MAINTENANCE_PACKS, MaintenancePack } from "../data/maintenancePacks";
 import { PartInfo } from "../types/technicalV2";
-import { buildAISharePrompt, parseAIResponse, formatCLP } from "../lib/aiShare";
+import {
+  buildAISharePrompt,
+  parseAIResponse,
+  formatCLP,
+  findRepuesto,
+  type RepuestoEvidencia,
+} from "../lib/aiShare";
 
 const SHOPPING_STORAGE_KEY = "mg350_shopping_list";
 
@@ -25,6 +31,7 @@ interface ShoppingItem {
   verified: boolean;
   note?: string; // detalle técnico del pack (ej: "5W/40 · ACEA A3/B3,B4 · 4,5 L")
   price?: number; // precio unitario CLP asignado desde la respuesta de la IA (null → sin asignar)
+  evidencia?: RepuestoEvidencia; // evidencia completa de la respuesta IA (url, compatibilidad, vin…)
 }
 
 interface ShoppingPack {
@@ -54,35 +61,6 @@ function saveShoppingList(list: ShoppingPack[]) {
   } catch {
     /* ignorar */
   }
-}
-
-// Normaliza un nombre para comparar con el de la IA: minúsculas, sin acentos,
-// sin contenido entre paréntesis (refs), solo alfanumérico.
-function normalizeName(s: string): string {
-  return s
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\(.*?\)/g, " ")
-    .replace(/[^a-z0-9 ]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-// Busca el precio unitario de un item en la respuesta de la IA.
-// Match tolerante: incluye en cualquiera de los dos sentidos ("Bujías NGK" ↔ "Bujías").
-function findPrice(
-  itemName: string,
-  repuestos: Array<{ nombre?: string; precio?: number }>
-): number | undefined {
-  const normItem = normalizeName(itemName);
-  if (!normItem) return undefined;
-  for (const r of repuestos) {
-    const normRep = normalizeName(r.nombre ?? "");
-    if (!normRep || typeof r.precio !== "number") continue;
-    if (normItem.includes(normRep) || normRep.includes(normItem)) return r.precio;
-  }
-  return undefined;
 }
 
 interface MaintenancePacksProps {
@@ -309,16 +287,16 @@ export default function MaintenancePacks({
       triggerToast("⚠️ No encontré el JSON de precios — pegá la respuesta de la IA");
       return;
     }
-    const repuestos = parsed.repuestos as Array<{ nombre?: string; precio?: number }>;
+    const repuestos = parsed.repuestos as RepuestoEvidencia[];
     let assigned = 0;
     let missing = 0;
     const updated: ShoppingPack[] = shoppingList.map((p) => ({
       ...p,
       items: p.items.map((i) => {
-        const price = findPrice(i.name, repuestos);
-        if (typeof price === "number" && price > 0) {
+        const match = findRepuesto(i.name, repuestos);
+        if (match && typeof match.precio === "number" && match.precio > 0) {
           assigned++;
-          return { ...i, price };
+          return { ...i, price: match.precio, evidencia: match };
         }
         if (i.price == null) missing++;
         return i;
@@ -350,6 +328,7 @@ export default function MaintenancePacks({
   const handleShareCart = () => {
     const items = shoppingList.flatMap((p) =>
       p.items.map((i) => ({
+        componentId: i.componentId,
         name: i.name,
         quantity: i.quantity,
         reference: i.reference,
