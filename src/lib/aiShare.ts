@@ -173,6 +173,17 @@ export function buildAISharePrompt(opts: AISharePromptOptions): string {
       "compatibilidad": "declarada por la publicacion",
       "vin": "no validado por la publicacion",
       "observacion": null
+    },
+    {
+      "nombre": "Aceite de motor",
+      "referencia_solicitada": "5W/40 ACEA A3/B4",
+      "referencia_encontrada": "5W-30 ACEA C3",
+      "precio": null,
+      "tienda": "Mercado Libre Chile",
+      "url": "https://publicacion.example.com/aceite",
+      "compatibilidad": "no verificada",
+      "vin": "no validado por la publicacion",
+      "observacion": "Encontrado 5W-30 C3, no cumple 5W/40 A3/B4"
     }
   ],
   "total": 27970
@@ -187,16 +198,17 @@ export function buildAISharePrompt(opts: AISharePromptOptions): string {
     ...lines,
     "",
     "Instrucciones:",
-    "1. Busca precios reales en tiendas chilenas (Mercado Libre Chile, Sodimac Auto, Autoparts, Construmart, etc.). Cada precio debe estar respaldado por una publicación identificable (incluye su 'url'). NUNCA inventes un precio ni lo estimes: si no puedes verificarlo, devuelve \"precio\": null y explica el motivo en \"observacion\". No rellenes precios ausentes.",
+    "1. Busca precios REALES Y ACTUALES en tiendas chilenas (Mercado Libre Chile, Sodimac Auto, Autoparts, Construmart, etc.). Cada precio debe estar respaldado por una publicación identificable (incluye su 'url'). Solo considera precio actual aquel que sea visible y verificable en la publicación consultada en esta búsqueda: NO uses precios históricos, snippets de buscador, cachés, páginas indexadas pero no comprobables ni publicaciones agotadas como precio actual. NUNCA inventes un precio ni lo estimes: si no puedes verificar uno visible, devuelve \"precio\": null y explica el motivo en \"observacion\". No rellenes precios ausentes.",
     "2. Las referencias indicadas en cada línea (p. ej. UJ-1797, NGK PFR6Y, LPW 100180, 10026870, 10030811, 10025044) son referencias de búsqueda verificadas por la app. Úsalas como criterio de búsqueda; no las reemplaces por otra referencia que encuentres sin declararlo en \"observacion\".",
     "3. Si el OEM exacto no aparece, puedes buscar equivalentes de marcas reconocidas (MANN, MAHLE, BOSCH, NGK, DENSO...) y debes declararlo en \"observacion\". Una coincidencia de nombre/modelo NO equivale a compatibilidad.",
     "4. Clasifica cada repuesto en \"compatibilidad\" con UNO de estos estados: \"referencia coincidente con la solicitada\", \"declarada por la publicación/tienda\", \"inferida por modelo/año/motor\", \"confirmada por VIN\" o \"no verificada\".",
-    "5. En \"vin\" indica \"no validado por la publicación\" salvo que la publicación demuestre una validación real del VIN. Tener el VIN del vehículo NO demuestra compatibilidad exacta.",
-    "6. Fluidos: conserva los requisitos técnicos de la nota (viscosidad, norma ACEA/API, tipo de refrigerante, capacidad en litros — p. ej. 5W/40 · ACEA A3/B3,B4 · 4,5 L). No cambies silenciosamente un fluido: si una variante no cumple la especificación, no la presentes como compatible.",
-    "7. Devuelve EXCLUSIVAMENTE un objeto JSON válido (sin texto alrededor, sin markdown) con esta forma:",
+    "5. Jerarquía de evidencia — prioriza así la confiabilidad del precio y la compatibilidad: (1) publicación que coincide con la referencia solicitada, (2) publicación que declara explícitamente aplicación al vehículo/motor/año, (3) publicación que valida mediante VIN/chasis, (4) equivalente de marca reconocida con especificaciones verificables, (5) coincidencia únicamente por nombre/modelo: no verificada. Nunca eleves una coincidencia de nivel inferior a uno superior.",
+    "6. En \"vin\" indica \"no validado por la publicación\" salvo que la publicación demuestre una validación real del VIN. Tener el VIN del vehículo NO demuestra compatibilidad exacta.",
+    "7. Fluidos: conserva los requisitos técnicos de la nota (viscosidad, norma ACEA/API, tipo de refrigerante, capacidad en litros — p. ej. 5W/40 · ACEA A3/B3,B4 · 4,5 L). No cambies silenciosamente un fluido: si una variante no cumple la especificación, no la presentes como compatible. Para productos vendidos en envases, conserva la capacidad requerida del vehículo como referencia técnica y calcula la cantidad mínima de envases necesarios para cubrirla. No reduzcas la capacidad técnica solicitada a la capacidad de un solo envase (p. ej. refrigerante 7,3 L → 2 envases de 4 L, no un solo envase de 4 L).",
+    "8. Devuelve EXCLUSIVAMENTE un objeto JSON válido (sin texto alrededor, sin markdown) con esta forma:",
     sampleJson,
-    "8. 'nombre', 'precio' y 'tienda' son obligatorios siempre. 'referencia_solicitada', 'referencia_encontrada', 'url', 'compatibilidad', 'vin' y 'observacion': complétalos cuando puedas determinarlos con evidencia — nunca los inventes.",
-    "9. 'precio' y 'total' deben ser números enteros en CLP (sin puntos ni signo $). 'total' es la suma de los precios verificados.",
+    "9. 'nombre', 'precio' y 'tienda' son obligatorios siempre. 'referencia_solicitada', 'referencia_encontrada', 'url', 'compatibilidad', 'vin' y 'observacion': complétalos cuando puedas determinarlos con evidencia — nunca los inventes.",
+    "10. 'precio' y 'total' deben ser números enteros en CLP (sin puntos ni signo $). Si un repuesto tiene \"precio\": null, NO debe sumarse al total. 'total' es la suma exclusiva de los precios numéricos verificados.",
   ]
     .filter((line): line is string => line != null)
     .join("\n");

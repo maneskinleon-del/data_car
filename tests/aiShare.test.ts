@@ -185,10 +185,13 @@ console.log(`\n=== PRUEBAS aiShare — carrito → prompt + evidencia ===\n`);
       { name: "Aceite de motor", quantity: 4.5, reference: "", hasReference: false, componentId: "engine_oil", note: "5W/40 · ACEA A3/B3,B4 · 4,5 L" },
     ],
   });
+  // Buscar solo en la sección de repuestos (antes de "Instrucciones"), no en sampleJson
+  const repSection = prompt.split("\nRepuestos")[1]?.split("\nInstrucciones")[0] ?? "";
+  const aceiteRepLines = repSection.split("\n").filter((l) => l.includes("Aceite de motor"));
   check(
-    "Prompt: aceite de motor — una sola línea ×4.5",
-    countLines(prompt, "Aceite de motor") === 1 && prompt.includes("Aceite de motor ×4.5"),
-    `qty='${prompt.match(/Aceite de motor ×[\d.,]+/)?.[0] ?? "(no encontrado)"}'`
+    "Prompt: aceite — una sola línea en sección repuestos ×4.5",
+    aceiteRepLines.length === 1 && repSection.includes("Aceite de motor ×4.5"),
+    `líneas rep=${aceiteRepLines.length} contenido='${repSection.match(/Aceite de motor ×[\d.,]+/)?.[0] ?? "(no encontrado)"}'`
   );
 }
 
@@ -297,6 +300,97 @@ console.log(`\n=== PRUEBAS aiShare — carrito → prompt + evidencia ===\n`);
     "parseAIResponse: sin total válido → null",
     parseAIResponse('{"repuestos":[]}') === null,
     "null"
+  );
+}
+
+// ── 13. Precio actual: regla temporal ─────────────────────────────────────────
+{
+  const prompt = buildAISharePrompt({
+    vehicleLabel: "MG 350", serviceName: "Lista", km: 0, items: [spark],
+  });
+  check(
+    "Precio actual: prohíbe precios históricos / snippets / cachés / agotados",
+    prompt.includes("Solo considera precio actual aquel que sea visible y verificable") &&
+    prompt.includes("NO uses precios históricos, snippets de buscador, cachés"),
+    "regla temporal presente"
+  );
+}
+
+// ── 14. Jerarquía de evidencia ───────────────────────────────────────────────
+{
+  const prompt = buildAISharePrompt({
+    vehicleLabel: "MG 350", serviceName: "Lista", km: 0, items: [spark],
+  });
+  check(
+    "Evidencia: jerarquía de 5 niveles presente",
+    prompt.includes("Jerarquía de evidencia") &&
+    prompt.includes("referencia solicitada") &&
+    prompt.includes("declara explícitamente aplicación al vehículo") &&
+    prompt.includes("valida mediante VIN") &&
+    prompt.includes("equivalente de marca reconocida") &&
+    prompt.includes("coincidencia únicamente por nombre/modelo"),
+    "5 niveles"
+  );
+  check(
+    "Evidencia: no elevar nivel inferior a superior",
+    prompt.includes("Nunca eleves una coincidencia de nivel inferior a uno superior"),
+    "regla anti-elevación"
+  );
+}
+
+// ── 15. Fluido: capacidad vs envases ─────────────────────────────────────────
+{
+  const prompt = buildAISharePrompt({
+    vehicleLabel: "MG 350", serviceName: "Lista", km: 0, items: [spark],
+  });
+  check(
+    "Fluido: distingue capacidad del vehículo vs cantidad de envases",
+    prompt.includes("cantidad mínima de envases necesarios") &&
+    prompt.includes("No reduzcas la capacidad técnica solicitada a la capacidad de un solo envase"),
+    "regla envases"
+  );
+  check(
+    "Fluido: ejemplo de refrigerante 7,3 L → 2 envases",
+    prompt.includes("refrigerante 7,3 L → 2 envases de 4 L"),
+    "ejemplo envases"
+  );
+}
+
+// ── 16. Total: suma exclusiva de precios numéricos (null excluido) ────────────
+{
+  const prompt = buildAISharePrompt({
+    vehicleLabel: "MG 350", serviceName: "Lista", km: 0, items: [spark],
+  });
+  check(
+    "Total: instrucción que null NO se suma",
+    prompt.includes("\"precio\": null, NO debe sumarse al total") &&
+    prompt.includes("suma exclusiva de los precios numéricos verificados"),
+    "regla total"
+  );
+}
+
+// ── 17. sampleJson contiene ejemplo de precio null ───────────────────────────
+{
+  const prompt = buildAISharePrompt({
+    vehicleLabel: "MG 350", serviceName: "Lista", km: 0, items: [spark],
+  });
+  check(
+    "SampleJson: incluye ejemplo de precio null con observación",
+    prompt.includes("\"precio\": null") &&
+    prompt.includes("no cumple 5W/40 A3/B4"),
+    "ejemplo null presente"
+  );
+}
+
+// ── 18. parseAIResponse: total excluye null ──────────────────────────────────
+{
+  const out = parseAIResponse(
+    '{"repuestos":[{"nombre":"A","precio":10000},{"nombre":"B","precio":null}],"total":10000}'
+  );
+  check(
+    "parseAIResponse: precio null no rompe parse y total=10000",
+    !!out && out.total === 10000,
+    out ? `total=${out.total}` : "null"
   );
 }
 
